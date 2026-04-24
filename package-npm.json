@@ -1,0 +1,29 @@
+{
+  "name": "releaseflow",
+  "version": "1.0.0",
+  "description": "Generate changelogs from GitHub commits - CLI and library",
+  "main": "dist/index.js",
+  "bin": {
+    "releaseflow": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "tsc"
+  },
+  "keywords": [
+    "changelog",
+    "github",
+    "conventional-commits",
+    "release"
+  ],
+  "author": "ReleaseFlow",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.1.0",
+    "octokit": "^3.1.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

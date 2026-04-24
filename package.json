@@ -1,0 +1,58 @@
+{
+  "name": "releaseflow",
+  "version": "1.0.0",
+  "description": "Generate changelogs from GitHub commits",
+  "bin": {
+    "releaseflow": "./cli.js"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "cli": "node cli.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "keywords": [
+    "changelog",
+    "github",
+    "conventional-commits",
+    "release",
+    "automation"
+  ],
+  "author": "ReleaseFlow",
+  "license": "MIT",
+  "dependencies": {
+    "@sentry/nextjs": "^10.50.0",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.104.1",
+    "chalk": "^4.1.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "commander": "^11.1.0",
+    "lucide-react": "^1.9.0",
+    "next": "16.2.4",
+    "octokit": "^3.1.2",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "stripe": "^22.0.2",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "happy-dom": "^16.6.0",
+    "tailwindcss": "^4",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5",
+    "vitest": "^2.1.8"
+  }
+}

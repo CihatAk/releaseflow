@@ -1,0 +1,242 @@
+# ReleaseFlow GitHub Action
+# Automatically generate changelogs on release or push
+# 
+# Usage:
+# - name: Generate Changelog
+#   uses: releaseflow/action@v1
+#   with:
+#     api-key: ${{ secrets.RELEASEFLOW_API_KEY }}
+#     repo: ${{ github.repository }}
+#     format: keepachangelog
+
+name: ReleaseFlow Changelog Generator
+
+on:
+  # Run on new tags (releases)
+  push:
+    tags:
+      - 'v*'
+  
+  # Run manually with inputs
+  workflow_dispatch:
+    inputs:
+      api_key:
+        description: 'ReleaseFlow API Key'
+        required: true
+        type: string
+      days:
+        description: 'Days to look back'
+        required: false
+        default: '30'
+        type: number
+      format:
+        description: 'Output format (default, keepachangelog, simple)'
+        required: false
+        default: 'keepachangelog'
+      output_file:
+        description: 'Output file path'
+        required: false
+        default: 'CHANGELOG.md'
+      branch:
+        description: 'Branch to compare from'
+        required: false
+        default: ''
+
+jobs:
+  generate-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get base ref
+        id: base
+        run: |
+          if [[ $GITHUB_REF_NAME == v* ]]; then
+            TAG_NAME=${GITHUB_REF_NAME#v}
+            echo "base_tag=v$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "base_type=tag" >> $GITHUB_OUTPUT
+          elif [ -n "${{ inputs.branch }}" ]; then
+            echo "base=${{ inputs.branch }}" >> $GITHUB_OUTPUT
+            echo "base_type=branch" >> $GITHUB_OUTPUT
+          else
+            # Get previous tag
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              echo "base=$PREV_TAG" >> $GITHUB_OUTPUT
+              echo "base_type=tag" >> $GITHUB_OUTPUT
+            else
+              echo "base=HEAD~${{ inputs.days || 30 }}" >> $GITHUB_OUTPUT
+              echo "base_type=commit" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Count commits
+        id: count
+        run: |
+          COUNT=$(git log ${{ steps.base.outputs.base }}..HEAD --oneline | wc -l)
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog content
+        id: content
+        run: |
+          FORMAT=${{ inputs.format || 'keepachangelog' }}
+          TODAY=$(date +%Y-%m-%d)
+          
+          # Build changelog
+          echo "# Changelog" >> changelog.md
+          echo "" >> changelog.md
+          echo "All notable changes to this project will be documented in this file." >> changelog.md
+          echo "" >> changelog.md
+          
+          if [[ "$FORMAT" == "keepachangelog" ]]; then
+            echo "This project adheres to [Semantic Versioning](https://semver.org/)." >> changelog.md
+            echo "" >> changelog.md
+          fi
+          
+          # Determine version
+          if [[ $GITHUB_REF_NAME == v* ]]; then
+            VERSION=${GITHUB_REF_NAME#v}
+          else
+            VERSION="Unreleased"
+          fi
+          
+          echo "## [$VERSION] - $TODAY" >> changelog.md
+          echo "" >> changelog.md
+          
+          # Parse commits by type
+          COMMIT_TYPES=("feat" "fix" "perf" "refactor" "docs" "style" "test" "build" "ci" "chore")
+          TYPE_LABELS=("Features" "Bug Fixes" "Performance" "Refactoring" "Documentation" "Styles" "Tests" "Build System" "CI/CD" "Maintenance")
+          TYPE_ICONS=("🚀" "🐛" "⚡" "♻️" "📝" "💄" "✅" "📦" "🔧" "🔧")
+          
+          for i in "${!COMMIT_TYPES[@]}"; do
+            TYPE="${COMMIT_TYPES[$i]}"
+            LABEL="${TYPE_LABELS[$i]}"
+            ICON="${TYPE_ICONS[$i]}"
+            
+            echo "### $ICON $LABEL" >> changelog.md
+            echo "" >> changelog.md
+          
+            git log ${{ steps.base.outputs.base }}..HEAD --prettyformat:"- %s" --grep="^$TYPE" 2>/dev/null | while read line; do
+              if [ -n "$line" ]; then
+                # Clean up the commit message
+                CLEAN_MSG=$(echo "$line" | sed "s/^- $TYPE\(.*\)/- \1/")
+                echo "$CLEAN_MSG" >> changelog.md
+              fi
+            done
+            echo "" >> changelog.md
+          done
+          
+          # Handle breaking changes
+          BREAKING=$(git log ${{ steps.base.outputs.base }}..HEAD --pretty=format:"%s" | grep -E "!|:boom:" | head -5)
+          if [ -n "$BREAKING" ]; then
+            echo "### ⚠️ BREAKING CHANGES" >> changelog.md
+            echo "" >> changelog.md
+            echo "$BREAKING" | while read line; do
+              echo "- $line" >> changelog.md
+            done
+            echo "" >> changelog.md
+          fi
+          
+          # Append existing changelog if it exists
+          if [ -f "${{ inputs.output_file }}" ] && [ "${{ inputs.output_file }}" != "changelog.md" ]; then
+            # Skip header lines from existing file
+            SKIP=0
+            while IFS= read -r line; do
+              if [[ "$line" =~ ^# ]] && [[ $SKIP -eq 0 ]]; then
+                SKIP=1
+                continue
+              fi
+              if [[ $SKIP -eq 1 ]]; then
+                echo "$line" >> changelog.md
+              fi
+            done < "${{ inputs.output_file }}"
+          elif [ -f "CHANGELOG.md" ]; then
+            SKIP=0
+            while IFS= read -r line; do
+              if [[ "$line" =~ ^# ]] && [[ $SKIP -eq 0 ]]; then
+                if [[ "$line" =~ ^## ]] || [[ "$line" =~ ^#\ Changelog ]]; then
+                  SKIP=1
+                fi
+              fi
+              if [[ $SKIP -eq 1 ]]; then
+                echo "$line" >> changelog.md
+              fi
+            done < "CHANGELOG.md"
+          fi
+          
+          echo "content=$(cat changelog.md | base64 -w0)" >> $GITHUB_OUTPUT
+
+      - name: Display preview
+        run: |
+          echo "## 📋 Changelog Preview"
+          echo ""
+          echo "Commits analyzed: ${{ steps.count.outputs.count }}"
+          echo "Base: ${{ steps.base.outputs.base }}"
+          echo "Format: ${{ inputs.format || 'keepachangelog' }}"
+          echo ""
+          echo '```markdown'
+          cat changelog.md
+          echo '```'
+
+      - name: Write changelog file
+        run: |
+          OUTPUT="${{ inputs.output_file || 'CHANGELOG.md' }}"
+          echo "${{ steps.content.outputs.content }}" | base64 -d > "$OUTPUT"
+          
+          echo "✅ Written to: $OUTPUT"
+          ls -la "$OUTPUT"
+
+      - name: Create Pull Request
+        if: github.event_name == 'workflow_dispatch'
+        id: pr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "docs: update changelog [skip ci]"
+          title: "📝 Changelog Update - $(date +%Y-%m-%d)"
+          body: |
+            ## 📋 Changelog Update
+
+            Generated by [ReleaseFlow](https://releaseflow.dev) GitHub Action
+
+            ### Summary
+            - **Commits analyzed:** ${{ steps.count.outputs.count }}
+            - **Base:** ${{ steps.base.outputs.base }}
+            - **Format:** ${{ inputs.format || 'keepachangelog' }}
+
+            ### Preview
+            <details>
+            <summary>Click to expand</summary>
+
+            ```markdown
+            ${{ steps.content.outputs.content }}
+            ```
+            </details>
+
+            ---
+            *🤖 Automated changelog update by [ReleaseFlow](https://releaseflow.dev)*
+
+          branch: releaseflow/changelog
+          delete-branch: true
+          labels: |
+            changelog
+            automated
+
+      - name: Comment on PR
+        if: github.event_name == 'workflow_dispatch' && steps.pr.outputs.pull-request-number
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Changelog updated! [View changes](${{ github.event.repository.html_url }}/pull/${{ steps.pr.outputs.pull-request-number }}/files)'
+            })
+
+outputs:
+  changelog_path: ${{ inputs.output_file || 'CHANGELOG.md' }}
+  commit_count: ${{ steps.count.outputs.count }}
+  base_ref: ${{ steps.base.outputs.base }}
