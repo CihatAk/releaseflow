@@ -123,7 +123,7 @@ export async function middleware(
 
   const cspScriptSrc = isDev
     ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
-    : "script-src 'self' 'strict-dynamic'";
+    : "script-src 'self' 'unsafe-inline' https://github.com https://github.com/login/oauth";
 
   const csp = [
     "default-src 'self'",
@@ -133,8 +133,9 @@ export async function middleware(
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    "form-action 'self' https://github.com",
     "frame-ancestors 'none'",
+    "connect-src 'self' https://github.com",
   ].join("; ");
 
   response.headers.set("Content-Security-Policy", csp);
