@@ -1,64 +1,80 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { webhookUrl, events, secret, name, type } = body;
-
-    if (!webhookUrl || !name) {
-      return NextResponse.json(
-        { error: "webhookUrl and name are required" },
-        { status: 400 }
-      );
-    }
-
-    if (!webhookUrl.startsWith("http://") && !webhookUrl.startsWith("https://")) {
-      return NextResponse.json(
-        { error: "Invalid webhook URL" },
-        { status: 400 }
-      );
-    }
-
-    const webhook = {
-      id: `wh_${Date.now()}`,
-      name,
-      type: type || "custom",
-      url: webhookUrl,
-      events: events || ["changelog Generated"],
-      secret: secret || "",
-      createdAt: new Date().toISOString(),
-      enabled: true,
-    };
-
-    return NextResponse.json({
-      success: true,
-      webhook,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to create webhook" },
-      { status: 500 }
-    );
-  }
+interface Webhook {
+  id: string;
+  name: string;
+  url: string;
+  type: "slack" | "discord" | "notion" | "webhook";
+  events: string[];
+  enabled: boolean;
+  createdAt: string;
 }
 
-export async function GET() {
+const webhooks = new Map<string, Webhook>();
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("userId");
+
+  if (userId) {
+    const userWebhooks = Array.from(webhooks.values()).filter(w => w.enabled);
+    return NextResponse.json({ webhooks: userWebhooks });
+  }
+
   return NextResponse.json({
     types: [
-      { id: "slack", name: "Slack", icon: "💬" },
-      { id: "notion", name: "Notion", icon: "📝" },
-      { id: "linear", name: "Linear", icon: "📏" },
-      { id: "webhook", name: "Custom Webhook", icon: "🔗" },
-      { id: "email", name: "Email", icon: "📧" },
-      { id: "discord", name: "Discord", icon: "🎮" },
-      { id: "zapier", name: "Zapier", icon: "⚡" },
+      { id: "slack", name: "Slack", icon: "💬", color: "#4A154B" },
+      { id: "discord", name: "Discord", icon: "🎮", color: "#5865F2" },
+      { id: "notion", name: "Notion", icon: "📝", color: "#000000" },
+      { id: "webhook", name: "Custom Webhook", icon: "🔗", color: "#10B981" },
     ],
     events: [
       "changelog.generated",
       "changelog.published",
       "release.created",
-      "schedule.triggered",
-      "repo.connected",
     ],
   });
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { name, url, type, events, userId } = body;
+
+    if (!name || !url) {
+      return NextResponse.json({ error: "name and url are required" }, { status: 400 });
+    }
+
+    const webhook: Webhook = {
+      id: `wh_${Date.now()}`,
+      name,
+      url,
+      type: type || "webhook",
+      events: events || ["changelog.generated"],
+      enabled: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    webhooks.set(webhook.id, webhook);
+
+    return NextResponse.json({ success: true, webhook });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to create webhook" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const webhookId = searchParams.get("id");
+
+  if (!webhookId) {
+    return NextResponse.json({ error: "Webhook ID required" }, { status: 400 });
+  }
+
+  if (webhooks.has(webhookId)) {
+    webhooks.delete(webhookId);
+    return NextResponse.json({ success: true });
+  }
+
+  return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
 }

@@ -1,59 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeftIcon,
-  LinkIcon,
   PlusIcon,
   TrashIcon,
+  Loader2Icon,
+  SendIcon,
   CheckIcon,
-  BellIcon,
-  WebhookIcon,
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-interface WebhookTrigger {
+interface Webhook {
   id: string;
-  repo: string;
+  name: string;
+  url: string;
+  type: "slack" | "discord" | "notion" | "webhook";
   events: string[];
-  webhookUrl: string;
   enabled: boolean;
+  createdAt: string;
 }
 
-const EVENTS = [
-  { value: "push", label: "Push to branch", description: "Trigger on every push" },
-  { value: "tag", label: "New tag", description: "Trigger when a tag is created" },
-  { value: "release", label: "New release", description: "Trigger on new release" },
-  { value: "pull_request", label: "PR merged", description: "Trigger when PR is merged" },
-];
-
 export default function WebhooksPage() {
-  const [webhooks, setWebhooks] = useState<WebhookTrigger[]>([]);
+  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [form, setForm] = useState({
-    repo: "",
-    events: [] as string[],
-    webhookUrl: "",
+    name: "",
+    url: "",
+    type: "webhook" as "slack" | "discord" | "notion" | "webhook",
   });
-  const [saved, setSaved] = useState(false);
 
-  const addWebhook = () => {
-    if (!form.repo || !form.webhookUrl || form.events.length === 0) return;
+  const loadWebhooks = async () => {
+    try {
+      const response = await fetch("/api/integrations/webhooks");
+      const data = await response.json();
+      if (data.webhooks) {
+        setWebhooks(data.webhooks);
+      }
+    } catch (e) {
+      console.error("Failed to load webhooks");
+    }
+  };
 
-    const newWebhook: WebhookTrigger = {
-      id: Date.now().toString(),
-      repo: form.repo,
-      events: form.events,
-      webhookUrl: form.webhookUrl,
+  useEffect(() => {
+    const stored = localStorage.getItem("rf_webhooks");
+    if (stored) {
+      setWebhooks(JSON.parse(stored));
+    }
+  }, []);
+
+  const saveWebhook = () => {
+    if (!form.name || !form.url) return;
+
+    const newWebhook: Webhook = {
+      id: `wh_${Date.now()}`,
+      ...form,
+      events: [form.type === "slack" ? "changelog.generated" : "changelog.published"],
       enabled: true,
+      createdAt: new Date().toISOString(),
     };
 
-    setWebhooks([...webhooks, newWebhook]);
-    localStorage.setItem("rf_webhooks", JSON.stringify([...webhooks, newWebhook]));
-    setForm({ repo: "", events: [], webhookUrl: "" });
+    const updated = [...webhooks, newWebhook];
+    setWebhooks(updated);
+    localStorage.setItem("rf_webhooks", JSON.stringify(updated));
+    setForm({ name: "", url: "", type: "webhook" });
     setShowForm(false);
   };
 
@@ -63,35 +79,46 @@ export default function WebhooksPage() {
     localStorage.setItem("rf_webhooks", JSON.stringify(updated));
   };
 
-  const toggleWebhook = (id: string) => {
-    const updated = webhooks.map(w => w.id === id ? { ...w, enabled: !w.enabled } : w);
-    setWebhooks(updated);
-    localStorage.setItem("rf_webhooks", JSON.stringify(updated));
-  };
+  const testWebhook = async (webhook: Webhook) => {
+    setTesting(webhook.id);
+    setTestResult(null);
 
-  const toggleEvent = (event: string) => {
-    setForm(prev => ({
-      ...prev,
-      events: prev.events.includes(event)
-        ? prev.events.filter(e => e !== event)
-        : [...prev.events, event],
-    }));
-  };
-
-  const testWebhook = async (url: string) => {
     try {
-      await fetch(url, {
+      const payload = {
+        event: "changelog.generated",
+        timestamp: new Date().toISOString(),
+        data: {
+          repo: "owner/repo",
+          version: "1.0.0",
+          commits: 5,
+        },
+      };
+
+      const response = await fetch(webhook.url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event: "test",
-          message: "ReleaseFlow webhook test",
-          timestamp: new Date().toISOString(),
-        }),
+        body: JSON.stringify(payload),
       });
-    } catch (e) {
-      console.error("Webhook test failed:", e);
+
+      setTestResult({
+        success: response.ok,
+        message: response.ok ? "Webhook delivered!" : "Failed to deliver",
+      });
+    } catch (error: any) {
+      setTestResult({
+        success: false,
+        message: error.message || "Network error",
+      });
+    } finally {
+      setTesting(null);
     }
+  };
+
+  const typeIcons: Record<string, string> = {
+    slack: "💬",
+    discord: "🎮",
+    notion: "📝",
+    webhook: "🔗",
   };
 
   return (
@@ -102,150 +129,103 @@ export default function WebhooksPage() {
             <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Webhook Triggers</h1>
-            <p className="text-gray-600">Trigger webhooks on repo events</p>
+            <h1 className="text-2xl font-bold text-gray-900">Webhook Manager</h1>
+            <p className="text-gray-600">Configure outgoing webhooks</p>
           </div>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PlusIcon className="w-5 h-5" />
-              Add Webhook Trigger
-            </CardTitle>
-            <CardDescription>
-              Configure when to trigger external webhooks
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Repository
-              </label>
-              <Input
-                placeholder="owner/repo"
-                value={form.repo}
-                onChange={(e) => setForm({ ...form, repo: e.target.value })}
-              />
-            </div>
+        <div className="grid gap-4 md:grid-cols-2 mb-6">
+          {Object.entries(typeIcons).map(([type, icon]) => (
+            <Card key={type} className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => { setForm({ ...form, type: type as any, name: type === "slack" ? "Slack" : type === "discord" ? "Discord" : "" }); setShowForm(true); }}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{icon}</span>
+                  <CardTitle className="text-lg capitalize">{type}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-500">
+                  {type === "slack" && "Send changelogs to Slack channels"}
+                  {type === "discord" && "Post to Discord Webhook"}
+                  {type === "notion" && "Sync to Notion pages"}
+                  {type === "webhook" && "Send to any HTTP endpoint"}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Events to trigger
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {EVENTS.map((event) => (
-                  <button
-                    key={event.value}
-                    onClick={() => toggleEvent(event.value)}
-                    className={`p-3 rounded-lg border text-left ${
-                      form.events.includes(event.value)
-                        ? "border-primary bg-primary/10"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="font-medium">{event.label}</div>
-                    <div className="text-xs text-gray-500">{event.description}</div>
-                  </button>
-                ))}
+        {showForm && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Add {form.type} Webhook</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input
+                placeholder="Webhook name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              <Input
+                placeholder={form.type === "slack" ? "Slack webhook URL" : "Discord webhook URL or custom URL"}
+                value={form.url}
+                onChange={(e) => setForm({ ...form, url: e.target.value })}
+              />
+              <div className="flex gap-2">
+                <Button onClick={saveWebhook} disabled={!form.name || !form.url}>
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Add Webhook
+                </Button>
+                <Button variant="outline" onClick={() => setShowForm(false)}>
+                  Cancel
+                </Button>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Webhook URL
-              </label>
-              <Input
-                placeholder="https://your-webhook-url.com/endpoint"
-                value={form.webhookUrl}
-                onChange={(e) => setForm({ ...form, webhookUrl: e.target.value })}
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <Button onClick={addWebhook} disabled={!form.repo || !form.webhookUrl || form.events.length === 0}>
-                <PlusIcon className="w-4 h-4 mr-2" />
-                Add
-              </Button>
-              <Button variant="outline" onClick={() => setShowForm(false)}>
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Active Webhooks ({webhooks.length})</CardTitle>
-              <CardDescription>
-                Configure your webhook triggers
-              </CardDescription>
-            </div>
-            <Button onClick={() => setShowForm(true)} variant="outline">
-              <PlusIcon className="w-4 h-4 mr-2" />
-              Add Webhook
-            </Button>
+          <CardHeader>
+            <CardTitle>Active Webhooks ({webhooks.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {webhooks.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <WebhookIcon className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                <p>No webhooks configured.</p>
-                <p className="text-sm">Add one to get started.</p>
-              </div>
+              <p className="text-gray-500 text-center py-8">
+                No webhooks configured. Add one above to get started.
+              </p>
             ) : (
               <div className="space-y-3">
                 {webhooks.map((webhook) => (
-                  <div
-                    key={webhook.id}
-                    className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
-                  >
-                    <button
-                      onClick={() => toggleWebhook(webhook.id)}
-                      className={`w-10 h-6 rounded-full transition-colors ${
-                        webhook.enabled ? "bg-green-500" : "bg-gray-300"
-                      }`}
-                    >
-                      <div
-                        className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                          webhook.enabled ? "translate-x-4" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-
-                    <div className="flex-1">
-                      <div className="font-medium">{webhook.repo}</div>
-                      <div className="flex gap-2 mt-1">
-                        {webhook.events.map((e) => (
-                          <span
-                            key={e}
-                            className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
-                          >
-                            {EVENTS.find(ev => ev.value === e)?.label}
-                          </span>
-                        ))}
+                  <div key={webhook.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{typeIcons[webhook.type]}</span>
+                      <div>
+                        <p className="font-medium">{webhook.name}</p>
+                        <p className="text-xs text-gray-500 font-mono">{webhook.url}</p>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {webhook.webhookUrl}
-                      </p>
                     </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => testWebhook(webhook.webhookUrl)}
-                    >
-                      <BellIcon className="w-4 h-4" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteWebhook(webhook.id)}
-                    >
-                      <TrashIcon className="w-4 h-4 text-red-500" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => testWebhook(webhook)}
+                        disabled={testing === webhook.id}
+                      >
+                        {testing === webhook.id ? (
+                          <Loader2Icon className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <SendIcon className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteWebhook(webhook.id)}
+                      >
+                        <TrashIcon className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
