@@ -36,6 +36,7 @@ export default function AdminLoginPage() {
       });
 
       const data = await res.json();
+      console.log("Login response:", data);
 
       if (!res.ok) {
         setError(data.error || "Giriş başarısız");
@@ -45,20 +46,22 @@ export default function AdminLoginPage() {
 
       if (data.token) {
         setSuccess(true);
-        document.cookie = `admin_token=${data.token}; path=/; max-age=${60*60*24*7}`;
         
-        setTimeout(() => {
-          router.push("/admin");
-        }, 1000);
+        // Set cookie properly
+        document.cookie = `admin_token=${data.token}; path=/; max-age=${60*60*24*7}; SameSite=Lax`;
+        
+        console.log("Token set, redirecting...");
+        
+        // Redirect to admin
+        window.location.href = "/admin";
       } else {
         setError("Token alınamadı");
-      }
-    } catch (err) {
-      setError("Bağlantı hatası");
-    } finally {
-      if (!success) {
         setLoading(false);
       }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Bağlantı hatası");
+      setLoading(false);
     }
   };
 
