@@ -403,9 +403,6 @@ export default function DashboardPage() {
                 <Link href="/settings" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
                   Settings
                 </Link>
-                <Link href="/pricing" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  <CrownIcon className="h-4 w-4 text-yellow-500" /> Upgrade Plan
-                </Link>
                 <Link href="/team" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
                   Team
                 </Link>
@@ -486,6 +483,11 @@ export default function DashboardPage() {
             </div>
             
             <div className="flex items-center gap-2">
+              <Link href="/pricing">
+                <Button variant="ghost" size="sm" className="text-yellow-500">
+                  <CrownIcon className="h-4 w-4 mr-1" /> Upgrade
+                </Button>
+              </Link>
               <Button variant="ghost" size="sm" onClick={toggleTheme}>
                 {darkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
               </Button>
