@@ -55,16 +55,24 @@ export default function PricingPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const token = document.cookie.split("; ").find(row => row.startsWith("github_token="));
-    if (!token) {
+    const checkAuth = async () => {
+      const token = document.cookie.split("; ").find(row => row.startsWith("github_token="));
+      if (!token) {
+        setChecking(false);
+        return;
+      }
+      try {
+        const response = await fetch("/api/github/repos");
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        }
+      } catch (e) {
+        console.error("Auth check failed:", e);
+      }
       setChecking(false);
-      return;
-    }
-    const userData = decodeURIComponent(token).split("=")[1];
-    if (userData) {
-      setUser({ login: userData });
-    }
-    setChecking(false);
+    };
+    checkAuth();
   }, []);
 
   const handleSubscribe = async (plan: string) => {
