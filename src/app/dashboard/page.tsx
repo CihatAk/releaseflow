@@ -403,6 +403,9 @@ export default function DashboardPage() {
                 <Link href="/settings" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
                   Settings
                 </Link>
+                <Link href="/pricing" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                  <CrownIcon className="h-4 w-4 text-yellow-500" /> Upgrade Plan
+                </Link>
                 <Link href="/team" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
                   Team
                 </Link>
