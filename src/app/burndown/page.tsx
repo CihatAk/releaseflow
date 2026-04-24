@@ -2,35 +2,101 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, TrendingDownIcon, TargetIcon, CalendarIcon } from "@/components/ui/icons";
+import { ArrowLeftIcon, TrendingDownIcon, Loader2Icon, TargetIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
-interface BurndownData {
-  day: string;
-  ideal: number;
-  actual: number;
-  remaining: number;
+interface BurndownPoint {
+  date: string;
+  commits: number;
+  cumulative: number;
 }
 
 export default function BurndownPage() {
+  const [owner, setOwner] = useState("");
+  const [repo, setRepo] = useState("");
   const [days, setDays] = useState(14);
-  
-  const mockData: BurndownData[] = Array.from({ length: days }, (_, i) => {
-    const ideal = Math.round(100 - (100 / days) * i);
-    const actual = i < days - 3 
-      ? Math.round(100 - (100 / days) * i * (0.8 + Math.random() * 0.4))
-      : 0;
-    return {
-      day: `Day ${i + 1}`,
-      ideal,
-      actual,
-      remaining: actual,
-    };
-  });
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<BurndownPoint[]>([]);
+  const [error, setError] = useState("");
 
-  const maxValue = 100;
-  const currentRemaining = mockData[mockData.length - 3]?.remaining || 0;
+  const fetchBurndown = async () => {
+    if (!owner || !repo) {
+      setError("Please enter owner and repo");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const token = document.cookie.split("; ").find(r => r.startsWith("github_token="))?.split("=")[1];
+      
+      if (!token) {
+        setError("Please log in first");
+        return;
+      }
+
+      const response = await fetch("/api/github/repos", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch");
+      }
+
+      const result = await response.json();
+      const targetRepo = result.repos?.find((r: any) => r.full_name === `${owner}/${repo}`);
+
+      if (!targetRepo) {
+        setError("Repository not found. Make sure you have access.");
+        return;
+      }
+
+      const commitResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/commits?since=${new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()}&per_page=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
+
+      if (!commitResponse.ok) {
+        throw new Error("Failed to fetch commits");
+      }
+
+      const commits = await commitResponse.json();
+      
+      const commitByDate = new Map<string, number>();
+      let cumulative = 0;
+      
+      for (const commit of commits) {
+        const date = new Date(commit.commit.author.date).toISOString().split("T")[0];
+        commitByDate.set(date, (commitByDate.get(date) || 0) + 1);
+      }
+
+      const sortedDates = Array.from(commitByDate.keys()).sort();
+      const burndown: BurndownPoint[] = sortedDates.map(date => {
+        cumulative += commitByDate.get(date) || 0;
+        return {
+          date,
+          commits: commitByDate.get(date) || 0,
+          cumulative,
+        };
+      });
+
+      setData(burndown);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch burndown data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const maxCommits = data.length > 0 ? Math.max(...data.map(d => d.commits)) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -45,150 +111,75 @@ export default function BurndownPage() {
           </div>
         </div>
 
-        <div className="flex gap-2 mb-6">
-          {[7, 14, 21, 30].map((d) => (
-            <Button
-              key={d}
-              variant={days === d ? "default" : "outline"}
-              size="sm"
-              onClick={() => setDays(d)}
-            >
-              {d} Days
+        <div className="bg-white rounded-lg border p-4 mb-6">
+          <div className="flex gap-2 mb-4">
+            <Input
+              placeholder="owner"
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              className="max-w-[150px]"
+            />
+            <Input
+              placeholder="repo"
+              value={repo}
+              onChange={(e) => setRepo(e.target.value)}
+              className="max-w-[150px]"
+            />
+            <Button onClick={fetchBurndown} disabled={loading}>
+              {loading ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Load"}
             </Button>
-          ))}
+          </div>
+
+          <div className="flex gap-2">
+            {[7, 14, 21, 30].map((d) => (
+              <Button
+                key={d}
+                variant={days === d ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDays(d)}
+              >
+                {d} days
+              </Button>
+            ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <TargetIcon className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{currentRemaining}</p>
-                  <p className="text-sm text-gray-500">Remaining Items</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <TrendingDownIcon className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{100 - currentRemaining}</p>
-                  <p className="text-sm text-gray-500">Completed</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <CalendarIcon className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{3}</p>
-                  <p className="text-sm text-gray-500">Days Left</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {error && (
+          <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Release Burndown</CardTitle>
-            <CardDescription>Ideal vs actual progress</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80 relative">
-              {/* Y-axis */}
-              <div className="absolute left-0 top-0 bottom-8 w-12 flex flex-col justify-between text-xs text-gray-400">
-                <span>100</span>
-                <span>75</span>
-                <span>50</span>
-                <span>25</span>
-                <span>0</span>
-              </div>
-              
-              {/* Chart */}
-              <div className="ml-14 h-full relative">
-                {/* Grid lines */}
-                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="border-b border-gray-100 w-full" />
-                  ))}
-                </div>
-                
-                {/* Ideal line */}
-                <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                  <polyline
-                    fill="none"
-                    stroke="#9CA3AF"
-                    strokeWidth="2"
-                    strokeDasharray="5,5"
-                    points={mockData.map((d, i) => {
-                      const x = (i / (mockData.length - 1)) * 100;
-                      const y = ((maxValue - d.ideal) / maxValue) * 100;
-                      return `${x},${y}`;
-                    }).join(" ")}
-                  />
-                </svg>
-                
-                {/* Actual line */}
-                <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                  <polyline
-                    fill="none"
-                    stroke="#3B82F6"
-                    strokeWidth="3"
-                    points={mockData.map((d, i) => {
-                      const x = (i / (mockData.length - 1)) * 100;
-                      const y = ((maxValue - d.actual) / maxValue) * 100;
-                      return `${x},${y}`;
-                    }).join(" ")}
-                  />
-                </svg>
-                
-                {/* Data points */}
-                {mockData.map((d, i) => (
-                  <div
-                    key={i}
-                    className="absolute w-3 h-3 bg-blue-500 rounded-full -translate-x-1.5"
-                    style={{
-                      left: `${(i / (mockData.length - 1)) * 100}%`,
-                      top: `${((maxValue - d.actual) / maxValue) * 100}%`,
-                    }}
-                    title={`${d.day}: ${d.actual} remaining`}
-                  />
+        {data.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Commit Activity</CardTitle>
+              <CardDescription>{owner}/{repo}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {data.map((point, idx) => (
+                  <div key={idx} className="flex items-center gap-4">
+                    <span className="w-24 text-sm text-gray-500">{point.date}</span>
+                    <div className="flex-1 h-6 bg-gray-100 rounded overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500"
+                        style={{ width: maxCommits > 0 ? `${(point.commits / maxCommits) * 100}%` : "0%" }}
+                      />
+                    </div>
+                    <span className="w-12 text-right text-sm">{point.commits}</span>
+                  </div>
                 ))}
               </div>
-              
-              {/* X-axis */}
-              <div className="absolute bottom-0 left-14 right-0 flex justify-between text-xs text-gray-400">
-                <span>Day 1</span>
-                <span>Day {Math.floor(days / 2)}</span>
-                <span>Day {days}</span>
-              </div>
-            </div>
-            
-            {/* Legend */}
-            <div className="flex gap-6 mt-4 justify-center">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-0.5 bg-gray-300 border-dashed" />
-                <span className="text-sm text-gray-500">Ideal</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-0.5 bg-blue-500" />
-                <span className="text-sm text-gray-500">Actual</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {data.length === 0 && !error && !loading && (
+          <div className="text-center py-12 text-gray-500">
+            Enter owner and repo to see burndown chart
+          </div>
+        )}
       </div>
     </div>
   );

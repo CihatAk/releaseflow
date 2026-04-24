@@ -2,48 +2,104 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, TrendingUpIcon, TrendingDownIcon, MinusIcon } from "@/components/ui/icons";
+import { ArrowLeftIcon, TrendingUpIcon, TrendingDownIcon, Loader2Icon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 interface CommitData {
   type: string;
+  label: string;
   count: number;
   percentage: number;
   trend: "up" | "down" | "stable";
 }
 
-const TYPE_COLORS: { [key: string]: string } = {
+const TYPE_COLORS: Record<string, string> = {
   feat: "bg-green-500",
-  fix: "bg-blue-500",
-  docs: "bg-yellow-500",
+  fix: "bg-red-500",
+  docs: "bg-blue-500",
+  style: "bg-gray-400",
   refactor: "bg-purple-500",
-  perf: "bg-red-500",
   test: "bg-cyan-500",
-  build: "bg-orange-500",
-  ci: "bg-pink-500",
-  chore: "bg-gray-500",
+  chore: "bg-yellow-500",
+  perf: "bg-pink-500",
+  ci: "bg-orange-500",
+  revert: "bg-red-700",
 };
 
-export default function TrendAnalysisPage() {
+export default function TrendsPage() {
+  const [owner, setOwner] = useState("");
+  const [repo, setRepo] = useState("");
   const [timeRange, setTimeRange] = useState("30");
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<CommitData[] | null>(null);
+  const [error, setError] = useState("");
 
-  const mockData: CommitData[] = [
-    { type: "feat", count: 45, percentage: 35, trend: "up" },
-    { type: "fix", count: 32, percentage: 25, trend: "up" },
-    { type: "docs", count: 18, percentage: 14, trend: "down" },
-    { type: "refactor", count: 15, percentage: 12, trend: "stable" },
-    { type: "perf", count: 10, percentage: 8, trend: "up" },
-    { type: "test", count: 8, percentage: 6, trend: "down" },
-  ];
+  const analyzeTrends = async () => {
+    if (!owner || !repo) {
+      setError("Please enter owner and repo");
+      return;
+    }
 
-  const totalCommits = mockData.reduce((sum, d) => sum + d.count, 0);
+    setLoading(true);
+    setError("");
+    setData(null);
 
-  const maxCount = Math.max(...mockData.map(d => d.count));
+    try {
+      const token = document.cookie.split("; ").find(r => r.startsWith("github_token="))?.split("=")[1];
+      
+      if (!token) {
+        setError("Please log in first");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(
+        `/api/changelog/generate?owner=${owner}&repo=${repo}&days=${timeRange}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ owner, repo, days: parseInt(timeRange) }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to fetch");
+      }
+
+      const result = await response.json();
+      const total = result.commitCount || 0;
+      
+      if (total === 0) {
+        setError("No commits found. Make sure commits follow conventional commits format.");
+        setLoading(false);
+        return;
+      }
+
+      const processedData: CommitData[] = result.sections.map((section: any) => ({
+        type: section.type,
+        label: section.label,
+        count: section.commits.length,
+        percentage: total > 0 ? Math.round((section.commits.length / total) * 100) : 0,
+        trend: section.commits.length > 5 ? "up" : section.commits.length > 0 ? "stable" : "down",
+      }));
+
+      setData(processedData);
+    } catch (err: any) {
+      setError(err.message || "Failed to analyze");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalCommits = data?.reduce((sum, d) => sum + d.count, 0) || 0;
+  const maxCount = data ? Math.max(...data.map(d => d.count)) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-8">
           <Link href="/dashboard" className="p-2 rounded-lg hover:bg-gray-100">
             <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
@@ -54,135 +110,111 @@ export default function TrendAnalysisPage() {
           </div>
         </div>
 
-        <div className="flex gap-2 mb-6">
-          {["7", "30", "90", "365"].map((days) => (
-            <Button
-              key={days}
-              variant={timeRange === days ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange(days)}
-            >
-              {days === "365" ? "All time" : `${days} days`}
+        <div className="bg-white rounded-lg border p-4 mb-6">
+          <div className="flex gap-2 mb-4">
+            <Input
+              placeholder="owner"
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              className="max-w-[150px]"
+            />
+            <Input
+              placeholder="repo"
+              value={repo}
+              onChange={(e) => setRepo(e.target.value)}
+              className="max-w-[150px]"
+            />
+            <Button onClick={analyzeTrends} disabled={loading}>
+              {loading ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Analyze"}
             </Button>
-          ))}
+          </div>
+
+          <div className="flex gap-2">
+            {["7", "30", "90", "365"].map((days) => (
+              <Button
+                key={days}
+                variant={timeRange === days ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimeRange(days)}
+              >
+                {days === "365" ? "All time" : `${days} days`}
+              </Button>
+            ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Distribution Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Type Distribution</CardTitle>
-              <CardDescription>Last {timeRange} days</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {mockData.map((data) => (
-                <div key={data.type} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="capitalize font-medium">{data.type}</span>
-                    <span className="text-gray-500">
-                      {data.count} ({data.percentage}%)
-                    </span>
-                  </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${TYPE_COLORS[data.type] || "bg-gray-500"}`}
-                      style={{ width: `${(data.count / maxCount) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+        {error && (
+          <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
 
-          {/* Donut Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center">
-                <div className="relative w-48 h-48">
-                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                    {mockData.map((data, idx) => {
-                      const slice = (data.count / totalCommits) * 251;
-                      const offset = mockData.slice(0, idx).reduce((sum, d) => sum + (d.count / totalCommits) * 251, 0);
-                      return (
-                        <circle
-                          key={data.type}
-                          cx="50"
-                          cy="50"
-                          r="40"
-                          fill="transparent"
-                          strokeWidth="20"
-                          strokeDasharray={`${slice} ${251 - slice}`}
-                          strokeDashoffset={-offset}
-                          className={TYPE_COLORS[data.type]}
-                        />
-                      );
-                    })}
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-3xl font-bold">{totalCommits}</p>
-                      <p className="text-xs text-gray-500">commits</p>
+        {data && data.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Type Distribution</CardTitle>
+                <CardDescription>Last {timeRange} days</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {data.map((item) => (
+                  <div key={item.type} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{item.label}</span>
+                      <span className="text-gray-500">
+                        {item.count} ({item.percentage}%)
+                      </span>
+                    </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${TYPE_COLORS[item.type] || "bg-gray-500"}`}
+                        style={{ width: `${maxCount > 0 ? (item.count / maxCount) * 100 : 0}%` }}
+                      />
                     </div>
                   </div>
-                </div>
-              </div>
+                ))}
+              </CardContent>
+            </Card>
 
-              <div className="grid grid-cols-2 gap-4 mt-6">
-                <div className="text-center p-3 bg-green-50 rounded-lg">
-                  <p className="text-2xl font-bold text-green-600">+{mockData.filter(d => d.trend === "up").length}</p>
-                  <p className="text-xs text-gray-500">Trending up</p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <p className="text-4xl font-bold">{totalCommits}</p>
+                  <p className="text-gray-500">total commits</p>
                 </div>
-                <div className="text-center p-3 bg-red-50 rounded-lg">
-                  <p className="text-2xl font-bold text-red-600">-{mockData.filter(d => d.trend === "down").length}</p>
-                  <p className="text-xs text-gray-500">Trending down</p>
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">
+                      {data.filter(d => d.trend === "up").length}
+                    </p>
+                    <p className="text-xs text-gray-500">Rising</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-600">
+                      {data.filter(d => d.trend === "stable").length}
+                    </p>
+                    <p className="text-xs text-gray-500">Stable</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-red-600">
+                      {data.filter(d => d.trend === "down").length}
+                    </p>
+                    <p className="text-xs text-gray-500">Declining</p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-          {/* Trends Table */}
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Detailed Breakdown</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4">Type</th>
-                      <th className="text-right py-3 px-4">Count</th>
-                      <th className="text-right py-3 px-4">%</th>
-                      <th className="text-right py-3 px-4">Trend</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockData.map((data) => (
-                      <tr key={data.type} className="border-b">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${TYPE_COLORS[data.type]}`} />
-                            <span className="capitalize">{data.type}</span>
-                          </div>
-                        </td>
-                        <td className="text-right py-3 px-4 font-mono">{data.count}</td>
-                        <td className="text-right py-3 px-4">{data.percentage}%</td>
-                        <td className="text-right py-3 px-4">
-                          {data.trend === "up" && <TrendingUpIcon className="w-5 h-5 text-green-500 ml-auto" />}
-                          {data.trend === "down" && <TrendingDownIcon className="w-5 h-5 text-red-500 ml-auto" />}
-                          {data.trend === "stable" && <MinusIcon className="w-5 h-5 text-gray-400 ml-auto" />}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {!data && !error && !loading && (
+          <div className="text-center py-12 text-gray-500">
+            Enter owner and repo to analyze trends
+          </div>
+        )}
       </div>
     </div>
   );
