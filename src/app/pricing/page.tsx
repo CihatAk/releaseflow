@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckIcon, Loader2Icon, GithubIcon } from "@/components/ui/icons";
@@ -48,10 +49,32 @@ const PLANS = [
 ];
 
 export default function PricingPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
+  const [user, setUser] = useState<{ login: string } | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const token = document.cookie.split("; ").find(row => row.startsWith("github_token="));
+    if (!token) {
+      setChecking(false);
+      return;
+    }
+    const userData = decodeURIComponent(token).split("=")[1];
+    if (userData) {
+      setUser({ login: userData });
+    }
+    setChecking(false);
+  }, []);
 
   const handleSubscribe = async (plan: string) => {
     if (plan === "free") return;
+    
+    const token = document.cookie.split("; ").find(row => row.startsWith("github_token="));
+    if (!token) {
+      router.push("/login?redirect=/pricing");
+      return;
+    }
     
     setLoading(plan);
     try {
@@ -59,8 +82,10 @@ export default function PricingPage() {
         method: "POST",
       });
       const data = await response.json();
-      if (data.url) {
+      if (response.ok && data.url) {
         window.location.href = data.url;
+      } else if (response.status === 401) {
+        router.push("/login?redirect=/pricing");
       } else {
         alert(data.error || "Failed to start checkout");
       }
@@ -85,8 +110,19 @@ export default function PricingPage() {
             <span className="text-xl font-bold">ReleaseFlow</span>
           </Link>
           <nav className="flex items-center gap-4">
-            <Link href="/login"><Button variant="ghost" size="sm">Sign In</Button></Link>
-            <Link href="/login"><Button size="sm"><GithubIcon className="h-4 w-4" />Get Started</Button></Link>
+            {checking ? (
+              <Button variant="ghost" size="sm" disabled>Loading...</Button>
+            ) : user ? (
+              <>
+                <Link href="/dashboard"><Button variant="ghost" size="sm">Dashboard</Button></Link>
+                <Link href="/settings"><Button variant="outline" size="sm">{user.login}</Button></Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login"><Button variant="ghost" size="sm">Sign In</Button></Link>
+                <Link href="/login"><Button size="sm"><GithubIcon className="h-4 w-4" />Get Started</Button></Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
@@ -133,6 +169,8 @@ export default function PricingPage() {
                     <Loader2Icon className="h-4 w-4 animate-spin" />
                   ) : plan.priceId === "free" ? (
                     "Current Plan"
+                  ) : user ? (
+                    `Get ${plan.name}`
                   ) : (
                     `Start Free Trial - $${plan.price}/mo`
                   )}
