@@ -1,4 +1,5 @@
 "use client";
+// Embed page with customizable theme, accent color, header/footer toggles
 
 import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
