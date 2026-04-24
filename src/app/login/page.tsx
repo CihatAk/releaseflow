@@ -15,15 +15,21 @@ export default function LoginPage() {
     const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
     
     if (!clientId) {
-      console.error("GitHub Client ID not configured");
+      console.error("GitHub Client ID not configured:", clientId);
+      alert("GitHub OAuth not configured. Please contact admin.");
       setIsLoading(false);
       return;
     }
 
+    console.log("GitHub Client ID:", clientId);
+    
     const redirectUri = `${window.location.origin}/login/callback`;
     const scope = "repo read:user";
     
-    window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}`;
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}`;
+    console.log("Redirecting to:", authUrl);
+    
+    window.location.href = authUrl;
   };
 
   return (
