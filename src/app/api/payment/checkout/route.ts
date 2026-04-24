@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   const cookieStore = await cookies();
-  const session = cookieStore.get("session");
+  const session = cookieStore.get("session") || cookieStore.get("github_token");
 
   if (!session?.value) {
     return NextResponse.json(
@@ -30,13 +30,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://releaseflow.dev";
+  const userId = session.value;
+  const userEmail = `${userId}@github.com`;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://releaseflow-fawn.vercel.app";
   const successUrl = `${baseUrl}/settings?success=true&plan=${plan}`;
   const cancelUrl = `${baseUrl}/pricing?canceled=true`;
 
   const result = await createCheckout(
-    session.value,
-    session.value,
+    userId,
+    userEmail,
     plan,
     successUrl,
     cancelUrl
