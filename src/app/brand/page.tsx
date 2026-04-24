@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, PaletteIcon, SaveIcon, EyeIcon, DownloadIcon } from "@/components/ui/icons";
+import { ArrowLeftIcon, PaletteIcon, SaveIcon, DownloadIcon, CopyIcon, CheckIcon, EyeIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ interface BrandTheme {
   companyName: string;
   logo: string;
   customFont: string;
+  fontFamily: string;
 }
 
 const defaultTheme: BrandTheme = {
@@ -23,12 +24,22 @@ const defaultTheme: BrandTheme = {
   companyName: "",
   logo: "",
   customFont: "",
+  fontFamily: "Inter, system-ui, sans-serif",
 };
+
+const PREVIEW_URL = "https://releaseflow-fawn.vercel.app";
 
 export default function BrandingPage() {
   const [theme, setTheme] = useState<BrandTheme>(defaultTheme);
   const [saved, setSaved] = useState(false);
-  const [preview, setPreview] = useState("default");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("rf_brand_theme");
+    if (stored) {
+      setTheme({ ...defaultTheme, ...JSON.parse(stored) });
+    }
+  }, []);
 
   const handleSave = () => {
     localStorage.setItem("rf_brand_theme", JSON.stringify(theme));
@@ -38,8 +49,32 @@ export default function BrandingPage() {
 
   const handlePreview = () => {
     localStorage.setItem("rf_brand_theme", JSON.stringify(theme));
-    window.open("/embed/preview", "_blank");
+    window.open("/embed/demo", "_blank");
   };
+
+  const getEmbedCode = () => {
+    const params = new URLSearchParams({
+      accent: theme.primaryColor.replace("#", ""),
+      header: "true",
+      footer: "true",
+      toggle: "true",
+    });
+    return `<iframe src="${PREVIEW_URL}/embed/demo?${params}" width="400" height="300" frameborder="0"></iframe>`;
+  };
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(getEmbedCode());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const fontOptions = [
+    "Inter, system-ui, sans-serif",
+    "Georgia, serif",
+    "Monaco, monospace",
+    "Arial, Helvetica, sans-serif",
+    "Times New Roman, serif",
+  ];
 
   const exportHTML = async (template: string) => {
     try {
