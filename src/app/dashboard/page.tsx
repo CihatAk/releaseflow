@@ -395,16 +395,48 @@ export default function DashboardPage() {
             {isMenuOpen("integrations") && (
               <div className="ml-4 mt-1 space-y-1">
                 <Link href="/integrations" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Jira/Linear
+                  All Integrations
+                </Link>
+                <Link href="/webhooks" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                  🔗 Webhooks
                 </Link>
                 <Link href="/brand" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Branding
+                  🎨 Branding
+                </Link>
+                <Link href="/team" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                  👥 Team
                 </Link>
                 <Link href="/settings" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
                   Settings
                 </Link>
-                <Link href="/team" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Team
+              </div>
+            )}
+          </div>
+
+          {/* Analytics Section - Collapsible */}
+          <div>
+            <button 
+              onClick={() => toggleMenu("analytics")}
+              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+            >
+              <span className="flex items-center gap-3">
+                <BarChart3Icon className="h-4 w-4" /> Analytics & Reports
+              </span>
+              <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("analytics") ? "rotate-180" : ""}`} />
+            </button>
+            {isMenuOpen("analytics") && (
+              <div className="ml-4 mt-1 space-y-1">
+                <Link href="/analytics" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                  📊 GitHub Analytics
+                </Link>
+                <Link href="/trends" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                  📈 Trends
+                </Link>
+                <Link href="/version" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                  🔢 Version Detection
+                </Link>
+                <Link href="/compare" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                  ⚖️ Compare Versions
                 </Link>
               </div>
             )}
