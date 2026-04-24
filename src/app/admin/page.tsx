@@ -60,14 +60,28 @@ export default function AdminDashboard() {
   useEffect(() => {
     const checkAdmin = async () => {
       try {
-        const res = await fetch("/api/admin/check");
-        if (!res.ok) {
-          router.push("/dashboard?error=unauthorized");
+        const token = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("admin_token="))
+          ?.split("=")[1];
+
+        if (!token) {
+          router.push("/admin/login");
           return;
         }
+
+        const res = await fetch("/api/admin/verify", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          router.push("/admin/login");
+          return;
+        }
+
         loadData();
       } catch (error) {
-        router.push("/dashboard");
+        router.push("/admin/login");
       }
     };
     checkAdmin();
