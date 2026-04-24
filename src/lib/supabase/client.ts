@@ -1,15 +1,24 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-let supabaseClient: ReturnType<typeof createClient> | null = null;
+let supabaseClient: SupabaseClient | null = null;
+let serverClient: SupabaseClient | null = null;
+
+const MISSING_ENV_ERROR = "[Supabase] Missing environment variables. Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.";
+
+function isSupabaseConfigured(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return !!(url && key && url.startsWith("https://") && key.startsWith("eyJ"));
+}
 
 export function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("[Supabase] Missing environment variables - using demo mode");
+  if (!isSupabaseConfigured()) {
+    console.warn(MISSING_ENV_ERROR);
     return null;
   }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
   if (!supabaseClient) {
     supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -18,6 +27,9 @@ export function getSupabaseClient() {
         autoRefreshToken: true,
         detectSessionInUrl: true,
       },
+      global: {
+        fetch: fetch,
+      },
     });
   }
 
@@ -25,19 +37,39 @@ export function getSupabaseClient() {
 }
 
 export function createServerClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!isSupabaseConfigured()) {
     return null;
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  if (!serverClient) {
+    serverClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+      global: {
+        fetch: fetch,
+      },
+    });
+  }
+
+  return serverClient;
+}
+
+export function isConfigured(): boolean {
+  return isSupabaseConfigured();
+}
+
+export function getConnectionInfo() {
+  const configured = isSupabaseConfigured();
+  return {
+    configured,
+    url: configured ? process.env.NEXT_PUBLIC_SUPABASE_URL : null,
+    hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.startsWith("eyJ"),
+  };
 }
 
 export type Profile = {
@@ -100,5 +132,23 @@ export type Subscription = {
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
+  created_at: string;
+};
+
+export type ApiKey = {
+  id: string;
+  owner_id: string;
+  name: string;
+  key: string;
+  last_used_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+};
+
+export type TeamMember = {
+  id: string;
+  team_id: string;
+  user_id: string;
+  role: "owner" | "admin" | "editor" | "viewer";
   created_at: string;
 };
