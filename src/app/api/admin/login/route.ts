@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ADMIN_EMAIL = "admin@releaseflow.app";
-const ADMIN_PASSWORD = "admin123";
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -12,7 +9,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email ve şifre gerekli" }, { status: 400 });
     }
 
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    // Use environment variables for credentials
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    // If env vars not set, deny access
+    if (!adminEmail || !adminPassword) {
+      console.error("Admin credentials not configured");
+      return NextResponse.json({ error: "Sunucu yapılandırma hatası" }, { status: 500 });
+    }
+
+    if (email === adminEmail && password === adminPassword) {
       const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
       
       return NextResponse.json({
