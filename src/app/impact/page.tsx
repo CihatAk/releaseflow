@@ -28,24 +28,72 @@ const analyzeImpact = (message: string, type: string, hasBreaking: boolean): num
   }
 
   if (hasBreaking) baseScore *= 2;
-  if (message.includes("security")) baseScore *= 3;
-  if (message.includes("security") && message.includes("Critical")) baseScore *= 5;
-  if (message.includes("api")) baseScore += 3;
-  if (message.includes("database") || message.includes("db")) baseScore += 5;
+  if (message.toLowerCase().includes("security")) baseScore *= 3;
+  if (message.toLowerCase().includes("api")) baseScore += 3;
+  if (message.toLowerCase().includes("database") || message.toLowerCase().includes("db")) baseScore += 5;
 
   return Math.min(baseScore, 100);
 };
 
 export default function ImpactScorePage() {
   const [repo, setRepo] = useState("");
-  const [analyzing, setAnalyzing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CommitImpact[]>([]);
+  const [error, setError] = useState("");
 
-  const analyze = async () => {
+  const fetchCommits = async () => {
     if (!repo) return;
-    setAnalyzing(true);
+    
+    const token = document.cookie.split("; ").find(r => r.startsWith("github_token="))?.split("=")[1];
+    if (!token) {
+      setError("Please login first");
+      return;
+    }
+
+    const [owner, repoName] = repo.split("/");
+    if (!owner || !repoName) {
+      setError("Please enter owner/repo format");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
     setResults([]);
-    setAnalyzing(false);
+
+    try {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repoName}/commits?per_page=20`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch commits");
+      }
+
+      const commits = await res.json();
+      
+      const analyzed = commits.map((c: any) => {
+        const message = c.commit.message;
+        const type = message.match(/^(feat|fix|perf|refactor|docs|test|chore|style|ci|build)(\([^)]*\))?:/)?.[1] || "other";
+        const breaking = message.includes("BREAKING CHANGE");
+        
+        return {
+          sha: c.sha.substring(0, 7),
+          message: message.split("\n")[0],
+          type,
+          score: analyzeImpact(message, type, breaking),
+          scope: message.match(/\(([^)]+)\)/)?.[1] || "general",
+        };
+      }).sort((a: CommitImpact, b: CommitImpact) => b.score - a.score);
+
+      setResults(analyzed);
+    } catch (err: any) {
+      setError(err.message || "Failed to analyze");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const totalScore = results.reduce((sum, r) => sum + r.score, 0);
@@ -76,12 +124,18 @@ export default function ImpactScorePage() {
               onChange={(e) => setRepo(e.target.value)}
               className="flex-1 px-4 py-2 border rounded-lg"
             />
-            <Button onClick={analyze} disabled={analyzing || !repo}>
-              {analyzing ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <ZapIcon className="w-4 h-4" />}
-              {analyzing ? "Analyzing..." : "Analyze"}
+            <Button onClick={fetchCommits} disabled={loading || !repo}>
+              {loading ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <ZapIcon className="w-4 h-4" />}
+              {loading ? "Analyzing..." : "Analyze"}
             </Button>
           </CardContent>
         </Card>
+
+        {error && (
+          <Card className="mb-6">
+            <CardContent className="py-4 text-red-500">{error}</CardContent>
+          </Card>
+        )}
 
         {results.length > 0 && (
           <>
@@ -104,22 +158,53 @@ export default function ImpactScorePage() {
                 <CardContent className="py-4 text-center">
                   <StarIcon className="w-8 h-8 mx-auto text-purple-500 mb-2" />
                   <p className="text-2xl font-bold">{results.filter(r => r.type === "feat").length}</p>
-                  <p className="text-sm text-gray-500">High Impact</p>
+                  <p className="text-sm text-gray-500">Features</p>
                 </CardContent>
               </Card>
             </div>
 
             <Card>
-                <CardHeader>
-                  <CardTitle>Commit Impact Breakdown</CardTitle>
-                  <CardDescription>Coming soon - Connect a repository to analyze impact</CardDescription>
-                </CardHeader>
-                <CardContent className="text-center py-8">
-                  <ZapIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">This feature is under development.</p>
-                  <p className="text-sm text-gray-400 mt-2">Connect your repository to analyze commit impact scores.</p>
-                </CardContent>
-              </Card>
+              <CardHeader>
+                <CardTitle>Commit Impact Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {results.map((commit) => (
+                    <div key={commit.sha} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="w-16 text-center">
+                        <span className={`text-lg font-bold ${
+                          commit.score >= 20 ? "text-red-500" :
+                          commit.score >= 10 ? "text-yellow-500" :
+                          "text-green-500"
+                        }`}>
+                          {commit.score}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-mono text-sm">{commit.sha}</p>
+                        <p>{commit.message}</p>
+                        <div className="flex gap-2 mt-1">
+                          <span className="text-xs bg-gray-200 px-2 py-0.5 rounded">{commit.type}</span>
+                          {commit.scope !== "general" && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{commit.scope}</span>}
+                        </div>
+                      </div>
+                      <div className="w-24">
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${
+                              commit.score >= 20 ? "bg-red-500" :
+                              commit.score >= 10 ? "bg-yellow-500" :
+                              "bg-green-500"
+                            }`}
+                            style={{ width: `${commit.score}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </>
         )}
       </div>

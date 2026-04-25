@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  github_id   Int      @unique
+  username   String
+  email      String?
+  avatar_url String?
+  created_at DateTime @default(now())
+  last_login DateTime @updatedAt
+  repos      Repo[]
+}
+
+model Repo {
+  id          String   @id @default(cuid())
+  name       String
+  full_name  String   @unique
+  owner      String
+  private   Boolean  @default(false)
+  github_token String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user_id    String
+  user      User     @relation(fields: [user_id], references: [id])
+  changelogs Changelog[]
+}
+
+model Changelog {
+  id          String   @id @default(cuid())
+  version     String
+  content    String
+  published  Boolean  @default(false)
+  slug        String?
+  created_at DateTime @default(now())
+  repo_id     String
+  repo       Repo     @relation(fields: [repo_id], references: [id])
+}
+
+model Feedback {
+  id         String   @id @default(cuid())
+  name       String   @default("Anonymous")
+  email      String?
+  category  String   @default("feedback")
+  message   String
+  created_at DateTime @default(now())
+}
+
+model Settings {
+  id              String   @id @default(cuid())
+  githubToken      String?
+  autoPublish    Boolean  @default(false)
+  defaultFormat  String   @default("markdown")
+  webhookUrl     String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+}

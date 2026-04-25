@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-
-interface Feedback {
-  id: string;
-  name: string;
-  email: string;
-  category: string;
-  message: string;
-  created_at: string;
-}
-
-let feedbackStore: Feedback[] = [];
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  return NextResponse.json(feedbackStore);
+  try {
+    const feedbacks = await prisma.feedback.findMany({
+      orderBy: { created_at: "desc" },
+    });
+    return NextResponse.json(feedbacks);
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch feedback" }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -24,16 +21,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    const feedback: Feedback = {
-      id: Date.now().toString(),
-      name: name || "Anonymous",
-      email: email || "",
-      category: category || "feedback",
-      message: message.trim(),
-      created_at: new Date().toISOString(),
-    };
-
-    feedbackStore.push(feedback);
+    const feedback = await prisma.feedback.create({
+      data: {
+        name: name || "Anonymous",
+        email: email || "",
+        category: category || "feedback",
+        message: message.trim(),
+      },
+    });
 
     return NextResponse.json({ success: true, id: feedback.id });
   } catch (error) {
