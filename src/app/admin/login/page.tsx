@@ -1,22 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { EyeIcon, EyeOffIcon, UsersIcon, ArrowRightIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 export default function AdminLoginPage() {
+  const router = useRouter();
   const [token, setToken] = useState("");
   const [showToken, setShowToken] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  // Already logged in?
+  useEffect(() => {
+    const cookies = document.cookie.split("; ");
+    if (cookies.find(c => c.startsWith("admin_session="))) {
+      router.replace("/admin");
+    }
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!token) {
+    if (!token.trim()) {
       setError("Token giriniz");
       return;
     }
@@ -28,21 +39,29 @@ export default function AdminLoginPage() {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token: token.trim() }),
       });
 
       const data = await res.json();
+      console.log("Login response:", data, "Status:", res.status);
 
       if (!res.ok || !data.success) {
-        setError(data.error || "Giriş başarısız");
+        setError(data.error || "Giriş başarısız - token kontrol edin");
         setLoading(false);
         return;
       }
 
-      window.location.href = "/admin";
+      // Success - set cookie manually and redirect
+      setSuccess(true);
+      
+      // Small delay for visual feedback
+      setTimeout(() => {
+        router.push("/admin");
+      }, 500);
       
     } catch (err) {
-      setError("Bağlantı hatası");
+      console.error("Login error:", err);
+      setError("Bağlantı hatası - internet kontrol edin");
       setLoading(false);
     }
   };
@@ -64,7 +83,7 @@ export default function AdminLoginPage() {
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-xl">Güvenli Giriş</CardTitle>
             <CardDescription>
-              Yönetici token ile giriş yapın
+              Yönetici anahtarı ile giriş yapın
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -75,7 +94,7 @@ export default function AdminLoginPage() {
                   <UsersIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     type={showToken ? "text" : "password"}
-                    placeholder="••••••••••••••••"
+                    placeholder="releaseflow-admin-2026"
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     className="pl-11 pr-11 h-12 bg-gray-50 border-gray-200"
@@ -96,12 +115,18 @@ export default function AdminLoginPage() {
                 </div>
               )}
 
+              {success && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-600">Giriş başarılı! Yönlendiriliyor...</p>
+                </div>
+              )}
+
               <Button 
                 type="submit" 
                 className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0" 
-                disabled={loading}
+                disabled={loading || success}
               >
-                {loading ? "Giriş yapılıyor..." : (
+                {loading ? "Kontrol ediliyor..." : success ? "Başarılı!" : (
                   <span className="flex items-center gap-2">
                     Giriş Yap <ArrowRightIcon className="h-5 w-5" />
                   </span>
