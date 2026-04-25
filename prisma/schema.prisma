@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -22,17 +22,17 @@ model User {
 }
 
 model Repo {
-  id          String   @id @default(cuid())
-  name       String
-  full_name  String   @unique
-  owner      String
-  private   Boolean  @default(false)
+  id            String       @id @default(cuid())
+  name          String
+  full_name     String       @unique
+  owner        String
+  private      Boolean      @default(false)
   github_token String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  user_id    String
-  user      User     @relation(fields: [user_id], references: [id])
-  changelogs Changelog[]
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+  user_id      String
+  user        User         @relation(fields: [user_id], references: [id])
+  changelogs  Changelog[]
 }
 
 model Changelog {
@@ -56,11 +56,11 @@ model Feedback {
 }
 
 model Settings {
-  id              String   @id @default(cuid())
-  githubToken      String?
-  autoPublish    Boolean  @default(false)
-  defaultFormat  String   @default("markdown")
-  webhookUrl     String?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  githubToken    String?
+  autoPublish   Boolean  @default(false)
+  defaultFormat String   @default("markdown")
+  webhookUrl   String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 }
