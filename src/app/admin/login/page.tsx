@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { EyeIcon, EyeOffIcon, UsersIcon, ArrowRightIcon, KeyIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 export default function AdminLoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -40,7 +42,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      window.location.href = "/admin";
+      router.push("/admin");
       
     } catch (err) {
       setError("Bağlantı hatası");

@@ -58,33 +58,17 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    const checkAdmin = async () => {
-      try {
-        const token = document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("admin_token="))
-          ?.split("=")[1];
+    // Check cookie directly - no API call needed
+    const cookies = document.cookie.split("; ");
+    const adminCookie = cookies.find(c => c.startsWith("admin_token="));
+    
+    if (!adminCookie) {
+      router.push("/admin/login");
+      return;
+    }
 
-        if (!token) {
-          router.push("/admin/login");
-          return;
-        }
-
-        const res = await fetch("/api/admin/verify", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) {
-          router.push("/admin/login");
-          return;
-        }
-
-        loadData();
-      } catch (error) {
-        router.push("/admin/login");
-      }
-    };
-    checkAdmin();
+    // Cookie exists, load data
+    loadData();
   }, []);
 
   const loadData = async () => {

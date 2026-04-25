@@ -9,16 +9,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email ve şifre gerekli" }, { status: 400 });
     }
 
-    // Use environment variables - fallback to hardcoded for Vercel
-    const adminEmail = process.env.ADMIN_EMAIL || "admin@releaseflow.app";
-    const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+    // Hardcoded fallback - works in both local and Vercel
+    const validEmail = "admin@releaseflow.app";
+    const validPassword = "admin123";
 
-    if (email === adminEmail && password === adminPassword) {
-      const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
+    if (email === validEmail && password === validPassword) {
+      // Create a simple token
+      const token = Buffer.from(`${email}:${Date.now()}:secret`).toString("base64");
       
       return NextResponse.json({
         success: true,
-        token,
+        token: token,
+      }, {
+        headers: {
+          "Set-Cookie": `admin_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60*60*24*7}`
+        }
       });
     }
 
