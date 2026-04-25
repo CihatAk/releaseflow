@@ -18,7 +18,7 @@ export default function AdminLoginPage() {
     e.preventDefault();
     
     if (!key.trim()) {
-      setError("Token gerekli");
+      setError("Token required");
       return;
     }
 
@@ -35,7 +35,7 @@ export default function AdminLoginPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        setError(data.error || "Hatalı token");
+        setError(data.error || "Invalid token");
         setLoading(false);
         return;
       }
@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
       router.push(data.redirect || "/admin");
       
     } catch (err) {
-      setError("Bağlantı hatası");
+      setError("Connection error");
       setLoading(false);
     }
   };
@@ -57,7 +57,7 @@ export default function AdminLoginPage() {
             <UsersIcon className="w-6 h-6 text-white" />
           </div>
           <CardTitle>Admin</CardTitle>
-          <CardDescription>Yönetici girişi</CardDescription>
+          <CardDescription>Admin login</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -75,12 +75,12 @@ export default function AdminLoginPage() {
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Giriş..." : "Giriş Yap"}
+              {loading ? "Logging in..." : "Login"}
             </Button>
           </form>
 
           <p className="text-center text-sm text-gray-500 mt-4">
-            <Link href="/dashboard" className="underline">Geri dön</Link>
+            <Link href="/dashboard" className="underline">Go back</Link>
           </p>
         </CardContent>
       </Card>

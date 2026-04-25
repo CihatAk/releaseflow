@@ -9,13 +9,12 @@ export async function POST(request: NextRequest) {
     const { token } = body;
 
     if (!token || token !== VALID_TOKEN) {
-      return NextResponse.json({ error: "Yanlış token" }, { status: 401 });
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    // Simple JSON response - client will handle redirect
     return NextResponse.json({ success: true, redirect: "/admin" });
     
   } catch (error) {
-    return NextResponse.json({ error: "Hata" }, { status: 500 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

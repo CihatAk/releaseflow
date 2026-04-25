@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   PlusIcon,
   StarIcon,
@@ -43,6 +44,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Skeleton, CardSkeleton, RepoListSkeleton, ChangelogSkeleton, DashboardSkeleton } from "@/components/ui/skeleton";
 import { OnboardingTour, useOnboarding } from "@/components/onboarding";
+import FeedbackButton from "@/components/feedback-button";
 
 interface Repo {
   id: number;
@@ -636,6 +638,8 @@ export default function DashboardPage() {
 
       {/* Onboarding */}
       {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
+
+      <FeedbackButton />
     </div>
   );
 }

@@ -28,14 +28,6 @@ export default function CollaborationPage() {
       setRoomId(Math.random().toString(36).substring(7));
     }
     setJoined(true);
-    
-    // Simulate collaborators joining
-    setTimeout(() => {
-      setCollaborators([
-        { id: "1", name: "Alice", avatar: "https://i.pravatar.cc/150?u=a", cursor: 2, color: colors[0] },
-        { id: "2", name: "Bob", avatar: "https://i.pravatar.cc/150?u=b", cursor: 5, color: colors[1] },
-      ]);
-    }, 1000);
   };
 
   const copyLink = async () => {
@@ -43,23 +35,6 @@ export default function CollaborationPage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const mockChangelog = `# Changelog
-
-## v1.2.0 - Feature Release
-
-### ✨ Features
-- Add OAuth2 login support
-- New dashboard with analytics
-- Dark mode support
-
-### 🐛 Bug Fixes
-- Fix button hover state
-- Resolve rate limiting
-
-### ⚡ Performance
-- Optimize database queries
-`;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -121,7 +96,7 @@ export default function CollaborationPage() {
                 <CardContent>
                   <textarea
                     className="w-full h-96 p-4 border rounded-lg font-mono text-sm resize-none"
-                    defaultValue={mockChangelog}
+                    placeholder="# Enter your changelog here..."
                   />
                   <div className="flex gap-2 mt-4">
                     <Button>

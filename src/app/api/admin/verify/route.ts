@@ -6,22 +6,20 @@ export async function POST(request: NextRequest) {
     const token = authHeader?.replace("Bearer ", "");
 
     if (!token) {
-      return NextResponse.json({ error: "Token yok" }, { status: 401 });
+      return NextResponse.json({ error: "Token missing" }, { status: 401 });
     }
 
-    // Verify token (simple base64 check for demo)
     try {
       const decoded = Buffer.from(token, "base64").toString("utf-8");
       const [email, timestamp] = decoded.split(":");
 
       if (!email || !timestamp) {
-        return NextResponse.json({ error: "Geçersiz token" }, { status: 401 });
+        return NextResponse.json({ error: "Invalid token" }, { status: 401 });
       }
 
-      // Token valid for 7 days
       const tokenAge = Date.now() - parseInt(timestamp);
       if (tokenAge > 7 * 24 * 60 * 60 * 1000) {
-        return NextResponse.json({ error: "Token süresi dolmuş" }, { status: 401 });
+        return NextResponse.json({ error: "Token expired" }, { status: 401 });
       }
 
       return NextResponse.json({
@@ -29,10 +27,10 @@ export async function POST(request: NextRequest) {
         user: { email, role: "super_admin" },
       });
     } catch {
-      return NextResponse.json({ error: "Geçersiz token" }, { status: 401 });
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
   } catch (error) {
     console.error("Verify error:", error);
-    return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

@@ -33,8 +33,9 @@ interface User {
 
 interface Feedback {
   id: string;
-  user_id: string;
-  username: string;
+  name: string;
+  email: string;
+  category: string;
   message: string;
   created_at: string;
 }
@@ -58,7 +59,6 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    // Simple localStorage check
     const isAdmin = localStorage.getItem("rf_admin_logged_in");
     
     if (!isAdmin) {
@@ -102,9 +102,19 @@ export default function AdminDashboard() {
     );
   }
 
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      feedback: "General Feedback",
+      feature: "Feature Request",
+      bug: "Bug Report",
+      pricing: "Pricing",
+      other: "Other",
+    };
+    return labels[category] || category;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
@@ -131,19 +141,18 @@ export default function AdminDashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Toplam Kullanıcı</p>
+                  <p className="text-sm text-gray-500">Total Users</p>
                   <p className="text-2xl font-bold">{stats?.totalUsers || 0}</p>
                 </div>
                 <UsersIcon className="h-8 w-8 text-blue-500" />
               </div>
               <p className="text-xs text-green-500 mt-2">
-                +{stats?.newUsersThisMonth || 0} bu ay
+                +{stats?.newUsersThisMonth || 0} this month
               </p>
             </CardContent>
           </Card>
@@ -152,7 +161,7 @@ export default function AdminDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Toplam Repo</p>
+                  <p className="text-sm text-gray-500">Total Repos</p>
                   <p className="text-2xl font-bold">{stats?.totalRepos || 0}</p>
                 </div>
                 <GithubIcon className="h-8 w-8 text-gray-500" />
@@ -176,7 +185,7 @@ export default function AdminDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Aktif Kullanıcı</p>
+                  <p className="text-sm text-gray-500">Active Users</p>
                   <p className="text-2xl font-bold">{stats?.activeUsers || 0}</p>
                 </div>
                 <TrendingUpIcon className="h-8 w-8 text-purple-500" />
@@ -185,14 +194,13 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
           {[
             { id: "dashboard", label: "Dashboard", icon: LayoutGridIcon },
-            { id: "users", label: "Kullanıcılar", icon: UsersIcon },
-            { id: "feedback", label: "Geri Bildirim", icon: MessageSquareIcon },
+            { id: "users", label: "Users", icon: UsersIcon },
+            { id: "feedback", label: "Feedback", icon: MessageSquareIcon },
             { id: "changelogs", label: "Changelogs", icon: FileTextIcon },
-            { id: "settings", label: "Ayarlar", icon: SettingsIcon },
+            { id: "settings", label: "Settings", icon: SettingsIcon },
           ].map((tab) => (
             <Button
               key={tab.id}
@@ -206,12 +214,11 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Content */}
         {activeTab === "dashboard" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Son Kayıt olan Kullanıcılar</CardTitle>
+                <CardTitle>Recent Users</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -225,13 +232,13 @@ export default function AdminDashboard() {
                       <div className="flex-1">
                         <p className="font-medium">{user.username}</p>
                         <p className="text-xs text-gray-500">
-                          {new Date(user.created_at).toLocaleDateString("tr-TR")}
+                          {new Date(user.created_at).toLocaleDateString("en-US")}
                         </p>
                       </div>
                     </div>
                   ))}
                   {users.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">Henüz kullanıcı yok</p>
+                    <p className="text-gray-500 text-center py-4">No users yet</p>
                   )}
                 </div>
               </CardContent>
@@ -239,20 +246,25 @@ export default function AdminDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Son Geri Bildirimler</CardTitle>
+                <CardTitle>Recent Feedback</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {feedbacks.slice(0, 5).map((fb) => (
                     <div key={fb.id} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                          {getCategoryLabel(fb.category)}
+                        </span>
+                      </div>
                       <p className="text-sm">{fb.message}</p>
                       <p className="text-xs text-gray-500 mt-2">
-                        {fb.username} • {new Date(fb.created_at).toLocaleDateString("tr-TR")}
+                        {fb.name} • {new Date(fb.created_at).toLocaleDateString("en-US")}
                       </p>
                     </div>
                   ))}
                   {feedbacks.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">Henüz geri bildirim yok</p>
+                    <p className="text-gray-500 text-center py-4">No feedback yet</p>
                   )}
                 </div>
               </CardContent>
@@ -264,9 +276,9 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Tüm Kullanıcılar</CardTitle>
+                <CardTitle>All Users</CardTitle>
                 <Input 
-                  placeholder="Ara..." 
+                  placeholder="Search..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-64"
@@ -278,10 +290,10 @@ export default function AdminDashboard() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-3 px-4">Kullanıcı</th>
+                      <th className="text-left py-3 px-4">User</th>
                       <th className="text-left py-3 px-4">GitHub ID</th>
-                      <th className="text-left py-3 px-4">Kayıt Tarihi</th>
-                      <th className="text-left py-3 px-4">Son Giriş</th>
+                      <th className="text-left py-3 px-4">Registered</th>
+                      <th className="text-left py-3 px-4">Last Login</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -301,11 +313,11 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-3 px-4 text-gray-500">{user.github_id}</td>
                           <td className="py-3 px-4 text-gray-500">
-                            {new Date(user.created_at).toLocaleDateString("tr-TR")}
+                            {new Date(user.created_at).toLocaleDateString("en-US")}
                           </td>
                           <td className="py-3 px-4 text-gray-500">
                             {user.last_login 
-                              ? new Date(user.last_login).toLocaleDateString("tr-TR")
+                              ? new Date(user.last_login).toLocaleDateString("en-US")
                               : "-"}
                           </td>
                         </tr>
@@ -313,7 +325,7 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
                 {users.length === 0 && (
-                  <p className="text-center py-8 text-gray-500">Henüz kullanıcı yok</p>
+                  <p className="text-center py-8 text-gray-500">No users found</p>
                 )}
               </div>
             </CardContent>
@@ -323,18 +335,28 @@ export default function AdminDashboard() {
         {activeTab === "feedback" && (
           <Card>
             <CardHeader>
-              <CardTitle>Geri Bildirimler</CardTitle>
-              <CardDescription>Müşterilerden gelen mesajlar</CardDescription>
+              <CardTitle>All Feedback</CardTitle>
+              <CardDescription>Messages from users</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {feedbacks.map((fb) => (
                   <div key={fb.id} className="p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                        {getCategoryLabel(fb.category)}
+                      </span>
+                    </div>
                     <p className="text-gray-900">{fb.message}</p>
                     <div className="flex items-center justify-between mt-3">
-                      <span className="text-sm text-gray-500">{fb.username}</span>
+                      <div>
+                        <span className="text-sm text-gray-500">{fb.name}</span>
+                        {fb.email && (
+                          <span className="text-sm text-gray-400 ml-2">({fb.email})</span>
+                        )}
+                      </div>
                       <span className="text-xs text-gray-400">
-                        {new Date(fb.created_at).toLocaleDateString("tr-TR")}
+                        {new Date(fb.created_at).toLocaleDateString("en-US")}
                       </span>
                     </div>
                   </div>
@@ -342,9 +364,9 @@ export default function AdminDashboard() {
                 {feedbacks.length === 0 && (
                   <div className="text-center py-12">
                     <MessageSquareIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">Henüz geri bildirim yok</p>
+                    <p className="text-gray-500">No feedback yet</p>
                     <p className="text-sm text-gray-400">
-                      müşteriler formu kullanarak mesaj gönderebilir
+                      Users can submit feedback using the feedback form
                     </p>
                   </div>
                 )}
@@ -356,7 +378,7 @@ export default function AdminDashboard() {
         {activeTab === "changelogs" && (
           <Card>
             <CardHeader>
-              <CardTitle>Son Üretilen Changelogs</CardTitle>
+              <CardTitle>Recent Changelogs</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -365,7 +387,7 @@ export default function AdminDashboard() {
                     <tr className="border-b">
                       <th className="text-left py-3 px-4">Repo</th>
                       <th className="text-left py-3 px-4">Version</th>
-                      <th className="text-left py-3 px-4">Tarih</th>
+                      <th className="text-left py-3 px-4">Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -374,14 +396,14 @@ export default function AdminDashboard() {
                         <td className="py-3 px-4 font-mono text-sm">{cl.repo_name}</td>
                         <td className="py-3 px-4">{cl.version}</td>
                         <td className="py-3 px-4 text-gray-500">
-                          {new Date(cl.created_at).toLocaleDateString("tr-TR")}
+                          {new Date(cl.created_at).toLocaleDateString("en-US")}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 {recentChangelogs.length === 0 && (
-                  <p className="text-center py-8 text-gray-500">Henüz changelog yok</p>
+                  <p className="text-center py-8 text-gray-500">No changelogs yet</p>
                 )}
               </div>
             </CardContent>
@@ -391,46 +413,46 @@ export default function AdminDashboard() {
         {activeTab === "settings" && (
           <Card>
             <CardHeader>
-              <CardTitle>Sistem Ayarları</CardTitle>
+              <CardTitle>System Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <h3 className="font-medium mb-3">Genel Ayarlar</h3>
+                <h3 className="font-medium mb-3">General Settings</h3>
                 <div className="grid gap-4">
                   <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
-                      <p className="font-medium">Bakım Modu</p>
-                      <p className="text-sm text-gray-500">Siteyi bakıma al</p>
+                      <p className="font-medium">Maintenance Mode</p>
+                      <p className="text-sm text-gray-500">Take site offline for maintenance</p>
                     </div>
-                    <Button variant="outline">Aktif Değil</Button>
+                    <Button variant="outline">Inactive</Button>
                   </div>
                   <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
-                      <p className="font-medium">Kayıtları Kapat</p>
-                      <p className="text-sm text-gray-500">Yeni kullanıcı alma</p>
+                      <p className="font-medium">Close Registrations</p>
+                      <p className="text-sm text-gray-500">Stop accepting new users</p>
                     </div>
-                    <Button variant="outline">Aktif Değil</Button>
+                    <Button variant="outline">Inactive</Button>
                   </div>
                 </div>
               </div>
 
               <div className="pt-6 border-t">
-                <h3 className="font-medium mb-3">Admin Yönetimi</h3>
+                <h3 className="font-medium mb-3">Admin Management</h3>
                 <p className="text-sm text-gray-500 mb-4">
-                  Admin yetkisi olan kullanıcılar
+                  Users with admin privileges
                 </p>
-                <Button variant="outline">Admin Ekle</Button>
+                <Button variant="outline">Add Admin</Button>
               </div>
 
               <div className="pt-6 border-t">
-                <h3 className="font-medium mb-3">Veri Yönetimi</h3>
+                <h3 className="font-medium mb-3">Data Management</h3>
                 <div className="flex gap-3">
                   <Button variant="outline">
                     <DownloadIcon className="h-4 w-4 mr-2" />
-                    Verileri İndir
+                    Export Data
                   </Button>
                   <Button variant="outline" className="text-red-500">
-                    Verileri Temizle
+                    Clear Data
                   </Button>
                 </div>
               </div>

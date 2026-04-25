@@ -17,14 +17,13 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     
     if (!email) {
-      setError("Lütfen email adresinizi girin");
+      setError("Please enter your email address");
       return;
     }
 
     setLoading(true);
     setError("");
 
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     setSent(true);
@@ -40,15 +39,15 @@ export default function ForgotPasswordPage() {
               <MailIcon className="h-10 w-10 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white">Şifremi Unuttum</h1>
-          <p className="text-gray-400 mt-2">Şifrenizi sıfırlayın</p>
+          <h1 className="text-3xl font-bold text-white">Forgot Password</h1>
+          <p className="text-gray-400 mt-2">Reset your password</p>
         </div>
 
         <Card className="border-0 shadow-2xl shadow-black/20">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-xl">Şifre Sıfırlama</CardTitle>
+            <CardTitle className="text-xl">Password Reset</CardTitle>
             <CardDescription>
-              Email adresinizi girin, şifre sıfırlama bağlantısını gönderelim
+              Enter your email address and we'll send you a reset link
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -59,14 +58,14 @@ export default function ForgotPasswordPage() {
                     <CheckIcon className="h-8 w-8 text-green-500" />
                   </div>
                 </div>
-                <h2 className="text-xl font-semibold text-green-600 mb-2">Email Gönderildi!</h2>
+                <h2 className="text-xl font-semibold text-green-600 mb-2">Email Sent!</h2>
                 <p className="text-gray-600 mb-6">
-                  {email} adresine şifre sırlama bağlantısı gönderdik.
+                  We've sent a password reset link to {email}.
                 </p>
                 <Link href="/admin/login">
                   <Button variant="outline" className="w-full">
                     <ArrowLeftIcon className="h-4 w-4 mr-2" />
-                    Giriş sayfasına dön
+                    Back to login
                   </Button>
                 </Link>
               </div>
@@ -98,10 +97,10 @@ export default function ForgotPasswordPage() {
                   {loading ? (
                     <span className="flex items-center gap-2">
                       <LoaderIcon className="h-5 w-5 animate-spin" />
-                      Gönderiliyor...
+                      Sending...
                     </span>
                   ) : (
-                    "Şifre Sıfırlama Linki Gönder"
+                    "Send Reset Link"
                   )}
                 </Button>
               </form>
@@ -111,7 +110,7 @@ export default function ForgotPasswordPage() {
 
         <div className="text-center mt-6">
           <Link href="/admin/login" className="text-gray-400 hover:text-white text-sm transition-colors">
-            ← Admin giriş sayfasına dön
+            ← Back to admin login
           </Link>
         </div>
       </div>

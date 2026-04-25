@@ -23,9 +23,7 @@ interface TeamMember {
 }
 
 export default function TeamPage() {
-  const [members, setMembers] = useState<TeamMember[]>([
-    { id: "1", name: "You", email: "you@example.com", role: "admin" },
-  ]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [newMember, setNewMember] = useState({ name: "", email: "", role: "editor" as const });
 

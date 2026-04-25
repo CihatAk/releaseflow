@@ -41,28 +41,10 @@ export default function ImpactScorePage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState<CommitImpact[]>([]);
 
-  const mockCommits = [
-    { sha: "abc123", message: "feat(auth): add OAuth2 login", type: "feat" },
-    { sha: "def456", message: "fix: resolve critical database deadlock", type: "fix", breaking: true },
-    { sha: "ghi789", message: "perf: optimize database queries", type: "perf" },
-    { sha: "jkl012", message: "feat(api): add new endpoints", type: "feat" },
-    { sha: "mno345", message: "docs: update readme", type: "docs" },
-    { sha: "pqr678", message: "test: add unit tests", type: "test" },
-    { sha: "stu901", message: "fix(ui): button styling", type: "fix" },
-    { sha: "vwx234", message: "refactor: simplify code", type: "refactor" },
-  ];
-
   const analyze = async () => {
+    if (!repo) return;
     setAnalyzing(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const analyzed = mockCommits.map(c => ({
-      ...c,
-      scope: c.message.match(/\(([^)]+)\)/)?.[1] || "general",
-      score: analyzeImpact(c.message, c.type, c.breaking || false),
-    })).sort((a, b) => b.score - a.score);
-    
-    setResults(analyzed);
+    setResults([]);
     setAnalyzing(false);
   };
 
