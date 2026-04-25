@@ -58,16 +58,14 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    // Check cookie directly - no API call needed
-    const cookies = document.cookie.split("; ");
-    const adminCookie = cookies.find(c => c.startsWith("admin_token="));
+    // Simple localStorage check
+    const isAdmin = localStorage.getItem("rf_admin_logged_in");
     
-    if (!adminCookie) {
+    if (!isAdmin) {
       router.push("/admin/login");
       return;
     }
 
-    // Cookie exists, load data
     loadData();
   }, []);
 
@@ -92,9 +90,8 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    document.cookie = "github_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    document.cookie = "admin_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    router.push("/");
+    localStorage.removeItem("rf_admin_logged_in");
+    router.push("/admin/login");
   };
 
   if (loading) {
