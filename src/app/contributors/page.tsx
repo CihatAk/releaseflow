@@ -1,14 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, UsersIcon } from "@/components/ui/icons";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export default function ContributorsPage() {
-  const [sortBy, setSortBy] = useState("commits");
-  const [timeRange, setTimeRange] = useState("30");
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">

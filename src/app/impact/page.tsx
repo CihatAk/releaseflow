@@ -110,47 +110,16 @@ export default function ImpactScorePage() {
             </div>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Commit Impact Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {results.map((commit) => (
-                    <div key={commit.sha} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                      <div className="w-16 text-center">
-                        <span className={`text-lg font-bold ${
-                          commit.score >= 20 ? "text-red-500" :
-                          commit.score >= 10 ? "text-yellow-500" :
-                          "text-green-500"
-                        }`}>
-                          {commit.score}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-mono text-sm">{commit.sha}</p>
-                        <p>{commit.message}</p>
-                        <div className="flex gap-2 mt-1">
-                          <span className="text-xs bg-gray-200 px-2 py-0.5 rounded">{commit.type}</span>
-                          {commit.scope && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{commit.scope}</span>}
-                        </div>
-                      </div>
-                      <div className="w-24">
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full ${
-                              commit.score >= 20 ? "bg-red-500" :
-                              commit.score >= 10 ? "bg-yellow-500" :
-                              "bg-green-500"
-                            }`}
-                            style={{ width: `${commit.score}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                <CardHeader>
+                  <CardTitle>Commit Impact Breakdown</CardTitle>
+                  <CardDescription>Coming soon - Connect a repository to analyze impact</CardDescription>
+                </CardHeader>
+                <CardContent className="text-center py-8">
+                  <ZapIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">This feature is under development.</p>
+                  <p className="text-sm text-gray-400 mt-2">Connect your repository to analyze commit impact scores.</p>
+                </CardContent>
+              </Card>
           </>
         )}
       </div>
