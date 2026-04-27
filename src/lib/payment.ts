@@ -156,11 +156,23 @@ export async function constructWebhookEvent(payload: string, signature: string) 
     return null;
   }
 
-  const crypto = require("crypto");
-  const expectedSignature = crypto
-    .createHmac("sha256", LEMON_WEBHOOK_SECRET)
-    .update(payload)
-    .digest("hex");
+  // Use Web Crypto API for Next.js edge runtime compatibility
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(LEMON_WEBHOOK_SECRET);
+  const messageData = encoder.encode(payload);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
 
   if (signature !== expectedSignature) {
     console.error("[Lemon] Invalid webhook signature");
