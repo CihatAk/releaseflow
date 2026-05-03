@@ -3,7 +3,7 @@ import { analyzeCommit } from '@/lib/ai';
 
 export async function POST(request: NextRequest) {
   try {
-    const { message } = await request.json();
+    const { message, aiConfig } = await request.json();
     
     if (!message) {
       return NextResponse.json(
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const analysis = await analyzeCommit(message);
+    const analysis = await analyzeCommit(message, aiConfig);
     
     return NextResponse.json(analysis);
   } catch (error) {
