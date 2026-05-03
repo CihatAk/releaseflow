@@ -3,7 +3,7 @@ import { suggestVersion, analyzeCommit } from '@/lib/ai';
 
 export async function POST(request: NextRequest) {
   try {
-    const { commits } = await request.json();
+    const { commits, aiConfig } = await request.json();
     
     if (!commits || !Array.isArray(commits)) {
       return NextResponse.json(
@@ -14,10 +14,10 @@ export async function POST(request: NextRequest) {
 
     // Analyze commits first
     const analyzedCommits = await Promise.all(
-      commits.map(commit => analyzeCommit(commit.message))
+      commits.map(commit => analyzeCommit(commit.message, aiConfig))
     );
 
-    const version = await suggestVersion(analyzedCommits);
+    const version = await suggestVersion(analyzedCommits, aiConfig);
     
     return NextResponse.json(version);
   } catch (error) {
