@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { GithubIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface Stats {
   users: number;
@@ -43,16 +44,18 @@ export default function Home() {
             </div>
             <span className="text-xl font-bold">ReleaseFlow</span>
           </div>
-          <nav className="flex items-center gap-4">
+          <nav className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle />
             <Link href="/login">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
                 Sign In
               </Button>
             </Link>
             <Link href="/login">
-              <Button size="sm">
+              <Button size="sm" className="text-xs sm:text-sm">
                 <GithubIcon className="h-4 w-4" />
-                Connect GitHub
+                <span className="hidden sm:inline ml-2">Connect GitHub</span>
+                <span className="sm:hidden ml-2">Connect</span>
               </Button>
             </Link>
           </nav>

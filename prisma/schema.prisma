@@ -13,12 +13,16 @@ datasource db {
 model User {
   id          String   @id @default(cuid())
   github_id   Int      @unique
-  username   String
+  username   String   @unique
   email      String?
   avatar_url String?
   created_at DateTime @default(now())
   last_login DateTime @updatedAt
   repos      Repo[]
+
+  @@index([github_id])
+  @@index([username])
+  @@index([created_at])
 }
 
 model Repo {
@@ -33,6 +37,12 @@ model Repo {
   user_id      String
   user        User         @relation(fields: [user_id], references: [id])
   changelogs  Changelog[]
+
+  @@index([owner])
+  @@index([user_id])
+  @@index([full_name])
+  @@index([created_at])
+  @@index([updated_at])
 }
 
 model Changelog {
@@ -44,6 +54,12 @@ model Changelog {
   created_at DateTime @default(now())
   repo_id     String
   repo       Repo     @relation(fields: [repo_id], references: [id])
+
+  @@index([repo_id])
+  @@index([version])
+  @@index([published])
+  @@index([slug])
+  @@index([created_at])
 }
 
 model Feedback {
