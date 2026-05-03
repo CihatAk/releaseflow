@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, CalendarIcon, ClockIcon, MailIcon, TrashIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ interface ScheduledReport {
 export default function ScheduledReportsPage() {
   const [reports, setReports] = useState<ScheduledReport[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     repo: "",
     frequency: "weekly",
@@ -28,35 +29,74 @@ export default function ScheduledReportsPage() {
     email: "",
   });
 
-  const addReport = () => {
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const fetchReports = async () => {
+    try {
+      const response = await fetch("/api/scheduled");
+      const data = await response.json();
+      setReports(data.reports || []);
+    } catch (error) {
+      console.error("Failed to fetch reports:", error);
+    }
+  };
+
+  const addReport = async () => {
     if (!form.repo || !form.email) return;
     
-    const newReport: ScheduledReport = {
-      id: Date.now().toString(),
-      repo: form.repo,
-      frequency: form.frequency as "weekly" | "monthly",
-      day: parseInt(form.day),
-      time: form.time,
-      email: form.email,
-      active: true,
-    };
-    
-    setReports([...reports, newReport]);
-    localStorage.setItem("rf_scheduled_reports", JSON.stringify([...reports, newReport]));
-    setShowForm(false);
-    setForm({ repo: "", frequency: "weekly", day: "1", time: "09:00", email: "" });
+    setLoading(true);
+    try {
+      const response = await fetch("/api/scheduled", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      
+      if (response.ok) {
+        await fetchReports();
+        setShowForm(false);
+        setForm({ repo: "", frequency: "weekly", day: "1", time: "09:00", email: "" });
+      }
+    } catch (error) {
+      console.error("Failed to create report:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteReport = (id: string) => {
-    const updated = reports.filter(r => r.id !== id);
-    setReports(updated);
-    localStorage.setItem("rf_scheduled_reports", JSON.stringify(updated));
+  const deleteReport = async (id: string) => {
+    try {
+      const response = await fetch(`/api/scheduled?id=${id}`, {
+        method: "DELETE",
+      });
+      
+      if (response.ok) {
+        await fetchReports();
+      }
+    } catch (error) {
+      console.error("Failed to delete report:", error);
+    }
   };
 
-  const toggleReport = (id: string) => {
-    const updated = reports.map(r => r.id === id ? { ...r, active: !r.active } : r);
-    setReports(updated);
-    localStorage.setItem("rf_scheduled_reports", JSON.stringify(updated));
+  const toggleReport = async (id: string) => {
+    const report = reports.find(r => r.id === id);
+    if (!report) return;
+
+    try {
+      const response = await fetch("/api/scheduled", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, active: !report.active }),
+      });
+      
+      if (response.ok) {
+        await fetchReports();
+      }
+    } catch (error) {
+      console.error("Failed to toggle report:", error);
+    }
   };
 
   return (
@@ -84,10 +124,10 @@ export default function ScheduledReportsPage() {
             <div className="flex items-start gap-3">
               <CalendarIcon className="h-5 w-5 mt-0.5" />
               <div>
-                <p className="font-medium">Coming Soon</p>
+                <p className="font-medium">Scheduled Reports</p>
                 <p className="text-sm text-muted-foreground">
-                  Scheduled reports will automatically generate changelogs and email them. 
-                  Currently in demo mode - reports are saved locally.
+                  Automatically generate changelogs and email them on a schedule.
+                  Reports are saved to the database and will be processed at the scheduled time.
                 </p>
               </div>
             </div>
@@ -178,7 +218,9 @@ export default function ScheduledReportsPage() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={addReport}>Save Schedule</Button>
+                <Button onClick={addReport} disabled={loading}>
+                  {loading ? "Saving..." : "Save Schedule"}
+                </Button>
                 <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
               </div>
             </CardContent>

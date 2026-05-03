@@ -80,3 +80,51 @@ model Settings {
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 }
+
+model ScheduledReport {
+  id          String   @id @default(cuid())
+  repo        String
+  frequency   String   @default("weekly")
+  day         Int      @default(1)
+  time        String   @default("09:00")
+  email       String
+  active      Boolean  @default(true)
+  user_id     String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([repo])
+  @@index([active])
+}
+
+model Webhook {
+  id         String   @id @default(cuid())
+  name       String
+  url        String
+  type       String   @default("webhook")
+  events     String[]
+  enabled    Boolean  @default(true)
+  user_id    String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([type])
+  @@index([enabled])
+}
+
+model Integration {
+  id           String   @id @default(cuid())
+  name         String
+  provider     String
+  config       Json
+  enabled      Boolean  @default(true)
+  user_id      String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([provider])
+  @@index([enabled])
+}

@@ -1,35 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-
-interface ZapierWebhook {
-  id: string;
-  userId: string;
-  name: string;
-  zapierUrl: string;
-  events: string[];
-  enabled: boolean;
-  createdAt: string;
-}
-
-const zapierWebhooks: Map<string, ZapierWebhook> = new Map();
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
+  try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
 
-  if (userId) {
-    const userWebhooks = Array.from(zapierWebhooks.values()).filter(w => w.userId === userId);
-    return NextResponse.json({ webhooks: userWebhooks });
+    if (userId) {
+      const integrations = await prisma.integration.findMany({
+        where: { user_id: userId, provider: "zapier", enabled: true },
+        orderBy: { created_at: "desc" },
+      });
+      return NextResponse.json({ integrations });
+    }
+
+    return NextResponse.json({
+      events: [
+        "changelog.generated",
+        "changelog.published",
+        "release.created",
+        "repo.connected",
+      ],
+      documentation: "https://zapier.com/help/create/webhooks",
+    });
+  } catch (error: any) {
+    console.error("Error fetching Zapier integrations:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch Zapier integrations" },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({
-    events: [
-      "changelog.generated",
-      "changelog.published",
-      "release.created",
-      "repo.connected",
-    ],
-    documentation: "https://zapier.com/help/create/webhooks",
-  });
 }
 
 export async function POST(request: NextRequest) {
@@ -45,40 +45,76 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid Zapier webhook URL" }, { status: 400 });
     }
 
-    const webhook: ZapierWebhook = {
-      id: `zap_${Date.now()}`,
-      userId,
-      name,
-      zapierUrl,
-      events: events || ["changelog.generated"],
-      enabled: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    zapierWebhooks.set(webhook.id, webhook);
+    const integration = await prisma.integration.create({
+      data: {
+        name,
+        provider: "zapier",
+        config: {
+          zapierUrl,
+          events: events || ["changelog.generated"],
+        },
+        enabled: true,
+        user_id: userId,
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      webhook,
+      integration,
       message: "Zapier webhook configured",
     });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to setup Zapier" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Error creating Zapier integration:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to setup Zapier" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, enabled } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Integration ID required" }, { status: 400 });
+    }
+
+    const integration = await prisma.integration.update({
+      where: { id },
+      data: { enabled },
+    });
+
+    return NextResponse.json({ success: true, integration });
+  } catch (error: any) {
+    console.error("Error updating Zapier integration:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to update Zapier integration" },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const webhookId = searchParams.get("id");
+  try {
+    const { searchParams } = new URL(request.url);
+    const integrationId = searchParams.get("id");
 
-  if (!webhookId) {
-    return NextResponse.json({ error: "Webhook ID required" }, { status: 400 });
-  }
+    if (!integrationId) {
+      return NextResponse.json({ error: "Integration ID required" }, { status: 400 });
+    }
 
-  if (zapierWebhooks.has(webhookId)) {
-    zapierWebhooks.delete(webhookId);
+    await prisma.integration.delete({
+      where: { id: integrationId },
+    });
+
     return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting Zapier integration:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to delete Zapier integration" },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
 }

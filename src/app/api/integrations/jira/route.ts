@@ -82,7 +82,7 @@ export async function GET() {
     example: {
       jiraDomain: "yourcompany",
       jiraEmail: "you@company.com",
-      jiraApiToken: "xxx",
+      jiraApiToken: "your-api-token-here",
       projectKey: "PROJ",
     },
   });

@@ -5,10 +5,15 @@ import Link from "next/link";
 import { ArrowLeftIcon, MailIcon, CopyIcon, CheckIcon, SendIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 export default function EmailDigestPage() {
   const [copied, setCopied] = useState(false);
   const [template, setTemplate] = useState("weekly");
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [provider, setProvider] = useState("resend");
+  const [apiKey, setApiKey] = useState("");
 
   const generateEmailTemplate = () => {
     const templates = {
@@ -52,7 +57,7 @@ Here's the monthly digest:
 • @developer2 - 12 commits  
 • @developer3 - 8 commits
 
-🔜 Coming Soon
+Upcoming Features
 • New API endpoints
 • Mobile app launch
 
@@ -93,6 +98,43 @@ Questions? Reply to this email!
     await navigator.clipboard.writeText(generateEmailTemplate());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSendEmail = async () => {
+    if (!email) {
+      alert("Please enter an email address");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const response = await fetch("/api/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider,
+          to: email,
+          subject: template === "weekly" ? "📦 Weekly Release Digest" : 
+                   template === "monthly" ? "📊 Monthly Release Summary" : 
+                   "🎉 New Release Available",
+          html: generateEmailTemplate().replace(/\n/g, "<br>"),
+          text: generateEmailTemplate(),
+          config: { apiKey },
+        }),
+      });
+
+      if (response.ok) {
+        alert("Email sent successfully!");
+      } else {
+        const error = await response.json();
+        alert(`Failed to send email: ${error.error}`);
+      }
+    } catch (error) {
+      console.error("Email send error:", error);
+      alert("Failed to send email");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -155,22 +197,50 @@ Questions? Reply to this email!
 
         <Card>
           <CardHeader>
-            <CardTitle>Integration</CardTitle>
-            <CardDescription>Connect with email services</CardDescription>
+            <CardTitle>Send Email</CardTitle>
+            <CardDescription>Send this template via email service</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <button className="w-full flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
-              <img src="https://logo.clearbit.com/sendgrid.com" className="w-6 h-6" alt="SendGrid" />
-              <span>SendGrid</span>
-            </button>
-            <button className="w-full flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
-              <img src="https://logo.clearbit.com/mailgun.org" className="w-6 h-6" alt="Mailgun" />
-              <span>Mailgun</span>
-            </button>
-            <button className="w-full flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
-              <img src="https://logo.clearbit.com/resend.dev" className="w-6 h-6" alt="Resend" />
-              <span>Resend</span>
-            </button>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium">Email Provider</label>
+              <select
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+                className="w-full rounded-lg border bg-background px-3 py-2"
+              >
+                <option value="resend">Resend</option>
+                <option value="sendgrid">SendGrid</option>
+                <option value="mailgun">Mailgun</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                {provider === "resend" ? "Resend API Key" : 
+                 provider === "sendgrid" ? "SendGrid API Key" : 
+                 "Mailgun API Key"}
+              </label>
+              <Input
+                type="password"
+                placeholder="Enter API key (or configure in env)"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">Recipient Email</label>
+              <Input
+                type="email"
+                placeholder="recipient@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <Button onClick={handleSendEmail} disabled={sending || !email} className="w-full">
+              {sending ? "Sending..." : <><SendIcon className="w-4 h-4 mr-2" /> Send Email</>}
+            </Button>
           </CardContent>
         </Card>
       </div>

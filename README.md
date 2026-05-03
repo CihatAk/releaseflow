@@ -75,9 +75,9 @@ docker build -t releaseflow .
 
 # Run
 docker run -p 3000:3000 \
-  -e GITHUB_CLIENT_ID=xxx \
-  -e GITHUB_CLIENT_SECRET=xxx \
-  -e NEXTAUTH_SECRET=xxx \
+  -e GITHUB_CLIENT_ID=your_client_id \
+  -e GITHUB_CLIENT_SECRET=your_client_secret \
+  -e NEXTAUTH_SECRET=your_secret_key \
   -e NEXTAUTH_URL=http://localhost:3000 \
   releaseflow
 ```
