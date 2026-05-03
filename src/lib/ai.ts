@@ -119,6 +119,57 @@ function getClient(cfg?: AIConfig) {
   };
 }
 
+export interface ChatOptions {
+  system?: string;
+  user: string;
+  temperature?: number;
+  maxTokens?: number;
+  json?: boolean;
+}
+
+export interface ChatResult {
+  content: string;
+  model: string;
+  provider: string;
+  latencyMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+}
+
+/**
+ * Generic chat completion usable by any feature. Returns structured result
+ * with latency + token info for comparison/analytics UI.
+ */
+export async function chat(opts: ChatOptions, aiConfig?: AIConfig): Promise<ChatResult> {
+  const c = getClient(aiConfig);
+  if (!c) throw new Error('AI API key not configured');
+
+  const messages = [] as { role: 'system' | 'user'; content: string }[];
+  if (opts.system) messages.push({ role: 'system', content: opts.system });
+  messages.push({ role: 'user', content: opts.user });
+
+  const started = Date.now();
+  const response = await c.client.chat.completions.create({
+    model: c.model,
+    messages,
+    temperature: opts.temperature ?? 0.5,
+    max_tokens: opts.maxTokens,
+    ...(opts.json ? { response_format: { type: 'json_object' as const } } : {}),
+  });
+  const latencyMs = Date.now() - started;
+
+  return {
+    content: response.choices[0]?.message?.content || '',
+    model: c.model,
+    provider: aiConfig?.provider || 'openai',
+    latencyMs,
+    promptTokens: response.usage?.prompt_tokens,
+    completionTokens: response.usage?.completion_tokens,
+    totalTokens: response.usage?.total_tokens,
+  };
+}
+
 export interface CommitAnalysis {
   summary: string;
   type: 'feat' | 'fix' | 'docs' | 'style' | 'refactor' | 'test' | 'chore' | 'perf';
