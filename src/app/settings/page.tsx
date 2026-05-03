@@ -20,6 +20,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AI_PROVIDERS } from "@/lib/ai";
+
+interface AIProviderConfig {
+  apiKey: string;
+  model?: string;
+  baseURL?: string;
+}
 
 interface Settings {
   githubToken: string;
@@ -30,6 +37,8 @@ interface Settings {
   notifyEmail: string;
   slackWebhook: string;
   discordWebhook: string;
+  aiActiveProvider: string;
+  aiProviders: Record<string, AIProviderConfig>;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +50,8 @@ const DEFAULT_SETTINGS: Settings = {
   notifyEmail: "",
   slackWebhook: "",
   discordWebhook: "",
+  aiActiveProvider: "openai",
+  aiProviders: {},
 };
 
 export default function SettingsPage() {
@@ -49,14 +60,27 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [visibleAIKeys, setVisibleAIKeys] = useState<Record<string, boolean>>({});
+  const [aiTesting, setAiTesting] = useState<string | null>(null);
+  const [aiTestResult, setAiTestResult] = useState<Record<string, { success: boolean; message: string }>>({});
 
-  const loadSettings = () => {
+  useEffect(() => {
     const stored = localStorage.getItem("rf_settings");
     if (stored) {
-      const parsed = JSON.parse(stored);
-      setSettings({ ...DEFAULT_SETTINGS, ...parsed, githubToken: parsed.githubToken || "" });
+      try {
+        const parsed = JSON.parse(stored);
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          githubToken: parsed.githubToken || "",
+          aiActiveProvider: parsed.aiActiveProvider || "openai",
+          aiProviders: parsed.aiProviders || {},
+        });
+      } catch {
+        // ignore corrupt settings
+      }
     }
-  };
+  }, []);
 
   const saveSettings = () => {
     localStorage.setItem("rf_settings", JSON.stringify(settings));
@@ -102,6 +126,67 @@ export default function SettingsPage() {
     }
 
     setTesting(false);
+  };
+
+  const updateAIProvider = (providerId: string, patch: Partial<AIProviderConfig>) => {
+    setSettings((prev) => ({
+      ...prev,
+      aiProviders: {
+        ...prev.aiProviders,
+        [providerId]: { ...(prev.aiProviders[providerId] || { apiKey: "" }), ...patch },
+      },
+    }));
+  };
+
+  const removeAIProvider = (providerId: string) => {
+    setSettings((prev) => {
+      const next = { ...prev.aiProviders };
+      delete next[providerId];
+      return { ...prev, aiProviders: next };
+    });
+    setAiTestResult((prev) => {
+      const next = { ...prev };
+      delete next[providerId];
+      return next;
+    });
+  };
+
+  const testAIProvider = async (providerId: string) => {
+    const cfg = settings.aiProviders[providerId];
+    const meta = AI_PROVIDERS[providerId];
+    if (!cfg?.apiKey) return;
+
+    setAiTesting(providerId);
+    setAiTestResult((prev) => ({ ...prev, [providerId]: { success: false, message: "" } }));
+
+    try {
+      const baseURL = cfg.baseURL || meta?.baseURL;
+      if (!baseURL) throw new Error("Base URL required");
+      const res = await fetch(`${baseURL.replace(/\/$/, "")}/models`, {
+        headers: { Authorization: `Bearer ${cfg.apiKey}` },
+      });
+      if (res.ok) {
+        setAiTestResult((prev) => ({
+          ...prev,
+          [providerId]: { success: true, message: "API key is valid" },
+        }));
+      } else {
+        setAiTestResult((prev) => ({
+          ...prev,
+          [providerId]: { success: false, message: `Invalid key (HTTP ${res.status})` },
+        }));
+      }
+    } catch (err) {
+      setAiTestResult((prev) => ({
+        ...prev,
+        [providerId]: {
+          success: false,
+          message: err instanceof Error ? err.message : "Request failed",
+        },
+      }));
+    }
+
+    setAiTesting(null);
   };
 
   const clearAllData = () => {
@@ -259,6 +344,193 @@ export default function SettingsPage() {
               <Button onClick={saveSettings}>
                 <SaveIcon className="w-4 h-4 mr-2" />
                 {saved ? "Saved!" : "Save Defaults"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* AI Providers */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <KeyIcon className="w-5 h-5" />
+                AI Providers
+              </CardTitle>
+              <CardDescription>
+                Add your own API keys for any OpenAI-compatible provider (OpenAI, Groq, DeepSeek, OpenRouter, Together, Mistral, xAI, Cerebras, Fireworks, or a custom endpoint). Keys are stored only in your browser.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Active Provider
+                </label>
+                <select
+                  value={settings.aiActiveProvider}
+                  onChange={(e) => updateSetting("aiActiveProvider", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  {Object.values(AI_PROVIDERS).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                      {settings.aiProviders[p.id]?.apiKey ? " ✓" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  The selected provider will be used for AI features (commit analysis, version suggestions, etc.).
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {Object.values(AI_PROVIDERS).map((provider) => {
+                  const cfg = settings.aiProviders[provider.id] || { apiKey: "" };
+                  const isActive = settings.aiActiveProvider === provider.id;
+                  const show = visibleAIKeys[provider.id];
+                  const result = aiTestResult[provider.id];
+                  return (
+                    <div
+                      key={provider.id}
+                      className={`border rounded-lg p-4 space-y-3 ${
+                        isActive ? "border-blue-400 bg-blue-50/30" : "border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900">{provider.label}</span>
+                          {isActive && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                              Active
+                            </span>
+                          )}
+                          {cfg.apiKey && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                              Configured
+                            </span>
+                          )}
+                        </div>
+                        {provider.apiKeyUrl && (
+                          <a
+                            href={provider.apiKeyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            Get API key →
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <Input
+                          type={show ? "text" : "password"}
+                          placeholder={`${provider.label} API key`}
+                          value={cfg.apiKey}
+                          onChange={(e) => updateAIProvider(provider.id, { apiKey: e.target.value })}
+                          className="pr-12"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVisibleAIKeys((prev) => ({ ...prev, [provider.id]: !prev[provider.id] }))
+                          }
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        >
+                          {show ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Model</label>
+                          {provider.models ? (
+                            <select
+                              value={cfg.model || provider.defaultModel}
+                              onChange={(e) => updateAIProvider(provider.id, { model: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            >
+                              {provider.models.map((m) => (
+                                <option key={m} value={m}>
+                                  {m}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <Input
+                              placeholder={provider.defaultModel || "model-name"}
+                              value={cfg.model || ""}
+                              onChange={(e) => updateAIProvider(provider.id, { model: e.target.value })}
+                            />
+                          )}
+                        </div>
+                        {provider.id === "custom" && (
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Base URL</label>
+                            <Input
+                              placeholder="https://api.example.com/v1"
+                              value={cfg.baseURL || ""}
+                              onChange={(e) => updateAIProvider(provider.id, { baseURL: e.target.value })}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => testAIProvider(provider.id)}
+                          disabled={!cfg.apiKey || aiTesting === provider.id}
+                        >
+                          {aiTesting === provider.id ? (
+                            <>
+                              <Loader2Icon className="w-3 h-3 mr-2 animate-spin" />
+                              Testing...
+                            </>
+                          ) : (
+                            "Test"
+                          )}
+                        </Button>
+                        {!isActive && cfg.apiKey && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateSetting("aiActiveProvider", provider.id)}
+                          >
+                            Set as active
+                          </Button>
+                        )}
+                        {cfg.apiKey && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeAIProvider(provider.id)}
+                          >
+                            <TrashIcon className="w-3 h-3 mr-1" />
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+
+                      {result && result.message && (
+                        <div
+                          className={`text-xs p-2 rounded ${
+                            result.success
+                              ? "bg-green-50 text-green-700"
+                              : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          {result.success ? <CheckIcon className="w-3 h-3 inline mr-1" /> : null}
+                          {result.message}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Button onClick={saveSettings}>
+                <SaveIcon className="w-4 h-4 mr-2" />
+                {saved ? "Saved!" : "Save AI Providers"}
               </Button>
             </CardContent>
           </Card>

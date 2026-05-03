@@ -1,14 +1,122 @@
 import { OpenAI } from 'openai';
 
-let openai: OpenAI | null = null;
+export interface AIProviderMeta {
+  id: string;
+  label: string;
+  baseURL: string;
+  defaultModel: string;
+  apiKeyUrl?: string;
+  models?: string[];
+}
 
-function getOpenAIClient() {
-  if (!openai && process.env.OPENAI_API_KEY) {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-  }
-  return openai;
+export const AI_PROVIDERS: Record<string, AIProviderMeta> = {
+  openai: {
+    id: 'openai',
+    label: 'OpenAI',
+    baseURL: 'https://api.openai.com/v1',
+    defaultModel: 'gpt-4o-mini',
+    apiKeyUrl: 'https://platform.openai.com/api-keys',
+    models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+  },
+  groq: {
+    id: 'groq',
+    label: 'Groq',
+    baseURL: 'https://api.groq.com/openai/v1',
+    defaultModel: 'llama-3.3-70b-versatile',
+    apiKeyUrl: 'https://console.groq.com/keys',
+    models: [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-70b-versatile',
+      'llama-3.1-8b-instant',
+      'mixtral-8x7b-32768',
+      'gemma2-9b-it',
+    ],
+  },
+  deepseek: {
+    id: 'deepseek',
+    label: 'DeepSeek',
+    baseURL: 'https://api.deepseek.com/v1',
+    defaultModel: 'deepseek-chat',
+    apiKeyUrl: 'https://platform.deepseek.com/api_keys',
+    models: ['deepseek-chat', 'deepseek-reasoner'],
+  },
+  openrouter: {
+    id: 'openrouter',
+    label: 'OpenRouter',
+    baseURL: 'https://openrouter.ai/api/v1',
+    defaultModel: 'openai/gpt-4o-mini',
+    apiKeyUrl: 'https://openrouter.ai/keys',
+  },
+  together: {
+    id: 'together',
+    label: 'Together AI',
+    baseURL: 'https://api.together.xyz/v1',
+    defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    apiKeyUrl: 'https://api.together.ai/settings/api-keys',
+  },
+  mistral: {
+    id: 'mistral',
+    label: 'Mistral',
+    baseURL: 'https://api.mistral.ai/v1',
+    defaultModel: 'mistral-small-latest',
+    apiKeyUrl: 'https://console.mistral.ai/api-keys/',
+    models: ['mistral-small-latest', 'mistral-large-latest', 'open-mistral-nemo'],
+  },
+  xai: {
+    id: 'xai',
+    label: 'xAI (Grok)',
+    baseURL: 'https://api.x.ai/v1',
+    defaultModel: 'grok-2-latest',
+    apiKeyUrl: 'https://console.x.ai/',
+    models: ['grok-2-latest', 'grok-beta'],
+  },
+  cerebras: {
+    id: 'cerebras',
+    label: 'Cerebras',
+    baseURL: 'https://api.cerebras.ai/v1',
+    defaultModel: 'llama-3.3-70b',
+    apiKeyUrl: 'https://cloud.cerebras.ai/platform',
+    models: ['llama-3.3-70b', 'llama3.1-8b'],
+  },
+  fireworks: {
+    id: 'fireworks',
+    label: 'Fireworks AI',
+    baseURL: 'https://api.fireworks.ai/inference/v1',
+    defaultModel: 'accounts/fireworks/models/llama-v3p3-70b-instruct',
+    apiKeyUrl: 'https://fireworks.ai/account/api-keys',
+  },
+  custom: {
+    id: 'custom',
+    label: 'Custom (OpenAI-compatible)',
+    baseURL: '',
+    defaultModel: '',
+  },
+};
+
+export interface AIConfig {
+  provider?: string;
+  apiKey?: string;
+  baseURL?: string;
+  model?: string;
+}
+
+function resolveConfig(cfg?: AIConfig) {
+  const providerId = cfg?.provider || 'openai';
+  const meta = AI_PROVIDERS[providerId];
+  const baseURL = cfg?.baseURL || meta?.baseURL || 'https://api.openai.com/v1';
+  const apiKey = cfg?.apiKey || process.env.OPENAI_API_KEY || '';
+  const model = cfg?.model || meta?.defaultModel || 'gpt-4o-mini';
+  if (!apiKey || !baseURL) return null;
+  return { apiKey, baseURL, model };
+}
+
+function getClient(cfg?: AIConfig) {
+  const resolved = resolveConfig(cfg);
+  if (!resolved) return null;
+  return {
+    client: new OpenAI({ apiKey: resolved.apiKey, baseURL: resolved.baseURL }),
+    model: resolved.model,
+  };
 }
 
 export interface CommitAnalysis {
@@ -28,15 +136,15 @@ export interface VersionSuggestion {
   };
 }
 
-export async function analyzeCommit(message: string): Promise<CommitAnalysis> {
+export async function analyzeCommit(message: string, aiConfig?: AIConfig): Promise<CommitAnalysis> {
   try {
-    const client = getOpenAIClient();
-    if (!client) {
-      throw new Error('OpenAI API key not configured');
+    const c = getClient(aiConfig);
+    if (!c) {
+      throw new Error('AI API key not configured');
     }
-    
-    const response = await client.chat.completions.create({
-      model: "gpt-4",
+
+    const response = await c.client.chat.completions.create({
+      model: c.model,
       messages: [
         {
           role: "system",
@@ -73,17 +181,17 @@ export async function analyzeCommit(message: string): Promise<CommitAnalysis> {
   }
 }
 
-export async function suggestVersion(commits: CommitAnalysis[]): Promise<VersionSuggestion> {
+export async function suggestVersion(commits: CommitAnalysis[], aiConfig?: AIConfig): Promise<VersionSuggestion> {
   try {
-    const client = getOpenAIClient();
-    if (!client) {
-      throw new Error('OpenAI API key not configured');
+    const c = getClient(aiConfig);
+    if (!c) {
+      throw new Error('AI API key not configured');
     }
-    
-    const commitMessages = commits.map(c => `${c.type}: ${c.summary}`).join('\n');
-    
-    const response = await client.chat.completions.create({
-      model: "gpt-4",
+
+    const commitMessages = commits.map(x => `${x.type}: ${x.summary}`).join('\n');
+
+    const response = await c.client.chat.completions.create({
+      model: c.model,
       messages: [
         {
           role: "system",
@@ -138,15 +246,15 @@ export async function suggestVersion(commits: CommitAnalysis[]): Promise<Version
   }
 }
 
-export async function improveCommitMessage(message: string): Promise<string> {
+export async function improveCommitMessage(message: string, aiConfig?: AIConfig): Promise<string> {
   try {
-    const client = getOpenAIClient();
-    if (!client) {
-      throw new Error('OpenAI API key not configured');
+    const c = getClient(aiConfig);
+    if (!c) {
+      throw new Error('AI API key not configured');
     }
-    
-    const response = await client.chat.completions.create({
-      model: "gpt-4",
+
+    const response = await c.client.chat.completions.create({
+      model: c.model,
       messages: [
         {
           role: "system",
