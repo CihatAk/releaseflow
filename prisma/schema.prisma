@@ -80,3 +80,18 @@ model Settings {
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 }
+
+model UserAiKey {
+  id         String   @id @default(cuid())
+  user_id    String
+  provider   String   // openai, groq, anthropic, google, mistral, etc.
+  key        String   // encrypted api key
+  label      String?
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([provider])
+  @@index([is_active])
+}

@@ -1,5 +1,6 @@
 import { createServerClient } from "./supabase/client";
-import type { Profile, Repository, Template, Changelog, Subscription, ApiKey } from "./supabase/client";
+import type { Profile, Repository, Template, Changelog, Subscription, ApiKey, UserAiKey } from "./supabase/client";
+import { encrypt, decrypt } from "./encryption";
 
 const CACHE_TTL = 60 * 1000; 
 const cache = new Map<string, { data: unknown; expires: number }>();
@@ -340,4 +341,107 @@ export async function incrementUsageCount(templateId: string): Promise<void> {
   if (!supabase) return;
 
   await supabase.rpc("increment_template_usage", { p_template_id: templateId });
+}
+
+export async function getUserAiKeys(userId: string): Promise<Pick<UserAiKey, "id" | "provider" | "label" | "is_active" | "created_at" | "updated_at">[]> {
+  const supabase = createServerClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("user_ai_keys")
+    .select("id, provider, label, is_active, created_at, updated_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[DB] Get user AI keys error:", error.message);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getActiveUserAiKey(userId: string, provider: string): Promise<string | null> {
+  const supabase = createServerClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("user_ai_keys")
+    .select("key")
+    .eq("user_id", userId)
+    .eq("provider", provider)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) return null;
+
+  try {
+    return decrypt(data.key);
+  } catch {
+    console.error("[DB] Failed to decrypt AI key");
+    return null;
+  }
+}
+
+export async function saveUserAiKey(
+  userId: string,
+  provider: string,
+  key: string,
+  label?: string
+): Promise<{ data?: UserAiKey; error?: string }> {
+  const supabase = createServerClient();
+  if (!supabase) return { error: "Database not configured" };
+
+  const encryptedKey = encrypt(key);
+
+  const { data, error } = await supabase
+    .from("user_ai_keys")
+    .insert({ user_id: userId, provider, key: encryptedKey, label: label || null })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[DB] Save user AI key error:", error.message);
+    return { error: error.message };
+  }
+
+  return { data: data as UserAiKey };
+}
+
+export async function deleteUserAiKey(userId: string, keyId: string): Promise<{ error?: string }> {
+  const supabase = createServerClient();
+  if (!supabase) return { error: "Database not configured" };
+
+  const { error } = await supabase
+    .from("user_ai_keys")
+    .delete()
+    .eq("id", keyId)
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("[DB] Delete user AI key error:", error.message);
+    return { error: error.message };
+  }
+
+  return {};
+}
+
+export async function toggleUserAiKey(userId: string, keyId: string, isActive: boolean): Promise<{ error?: string }> {
+  const supabase = createServerClient();
+  if (!supabase) return { error: "Database not configured" };
+
+  const { error } = await supabase
+    .from("user_ai_keys")
+    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+    .eq("id", keyId)
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("[DB] Toggle user AI key error:", error.message);
+    return { error: error.message };
+  }
+
+  return {};
 }

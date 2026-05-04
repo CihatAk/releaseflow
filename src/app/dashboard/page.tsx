@@ -408,6 +408,9 @@ export default function DashboardPage() {
                 <Link href="/team" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
                   👥 Team
                 </Link>
+                <Link href="/ai-studio" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                  ⚡ AI Studio
+                </Link>
                 <Link href="/settings" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
                   Settings
                 </Link>

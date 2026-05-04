@@ -152,3 +152,14 @@ export type TeamMember = {
   role: "owner" | "admin" | "editor" | "viewer";
   created_at: string;
 };
+
+export type UserAiKey = {
+  id: string;
+  user_id: string;
+  provider: string;
+  key: string;
+  label: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};

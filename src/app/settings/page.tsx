@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeftIcon,
@@ -20,6 +20,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  AIProvider,
+  AI_PROVIDERS,
+  AISettings,
+  getAISettings,
+  saveAISettings,
+} from "@/lib/ai-providers";
+
+interface AIProviderConfig {
+  apiKey: string;
+  model?: string;
+  baseURL?: string;
+}
 
 interface Settings {
   githubToken: string;
@@ -30,6 +43,8 @@ interface Settings {
   notifyEmail: string;
   slackWebhook: string;
   discordWebhook: string;
+  aiActiveProvider: string;
+  aiProviders: Record<string, AIProviderConfig>;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +56,8 @@ const DEFAULT_SETTINGS: Settings = {
   notifyEmail: "",
   slackWebhook: "",
   discordWebhook: "",
+  aiActiveProvider: "openai",
+  aiProviders: {},
 };
 
 export default function SettingsPage() {
@@ -49,17 +66,50 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  
+  // AI Settings
+  const [aiSettings, setAiSettings] = useState<AISettings>({
+    activeProvider: 'openai',
+    providers: {},
+  });
+  const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
+  const [aiTestResult, setAiTestResult] = useState<{ provider: string; success: boolean; message: string } | null>(null);
+  const [testingAi, setTestingAi] = useState<string | null>(null);
+  const [visibleAIKeys, setVisibleAIKeys] = useState<Record<string, boolean>>({});
+  const [aiTesting, setAiTesting] = useState<string | null>(null);
+  const [aiTestResults, setAiTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
+
+  useEffect(() => {
+    loadSettings();
+    loadAISettings();
+  }, []);
 
   const loadSettings = () => {
     const stored = localStorage.getItem("rf_settings");
     if (stored) {
-      const parsed = JSON.parse(stored);
-      setSettings({ ...DEFAULT_SETTINGS, ...parsed, githubToken: parsed.githubToken || "" });
+      try {
+        const parsed = JSON.parse(stored);
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          githubToken: parsed.githubToken || "",
+          aiActiveProvider: parsed.aiActiveProvider || "openai",
+          aiProviders: parsed.aiProviders || {},
+        });
+      } catch {
+        // ignore corrupt settings
+      }
     }
+  };
+
+  const loadAISettings = () => {
+    const stored = getAISettings();
+    setAiSettings(stored);
   };
 
   const saveSettings = () => {
     localStorage.setItem("rf_settings", JSON.stringify(settings));
+    saveAISettings(aiSettings);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -104,6 +154,67 @@ export default function SettingsPage() {
     setTesting(false);
   };
 
+  const updateAIProvider = (providerId: string, patch: Partial<AIProviderConfig>) => {
+    setSettings((prev) => ({
+      ...prev,
+      aiProviders: {
+        ...prev.aiProviders,
+        [providerId]: { ...(prev.aiProviders[providerId] || { apiKey: "" }), ...patch },
+      },
+    }));
+  };
+
+  const removeAIProvider = (providerId: string) => {
+    setSettings((prev) => {
+      const next = { ...prev.aiProviders };
+      delete next[providerId];
+      return { ...prev, aiProviders: next };
+    });
+    setAiTestResults((prev) => {
+      const next = { ...prev };
+      delete next[providerId];
+      return next;
+    });
+  };
+
+  const testAIProvider = async (providerId: string) => {
+    const cfg = settings.aiProviders[providerId];
+    const meta = AI_PROVIDERS[providerId as AIProvider];
+    if (!cfg?.apiKey) return;
+
+    setAiTesting(providerId);
+    setAiTestResults((prev) => ({ ...prev, [providerId]: { success: false, message: "" } }));
+
+    try {
+      const baseURL = cfg.baseURL || meta?.baseUrl;
+      if (!baseURL) throw new Error("Base URL required");
+      const res = await fetch(`${baseURL.replace(/\/$/, "")}/models`, {
+        headers: { Authorization: `Bearer ${cfg.apiKey}` },
+      });
+      if (res.ok) {
+        setAiTestResults((prev) => ({
+          ...prev,
+          [providerId]: { success: true, message: "API key is valid" },
+        }));
+      } else {
+        setAiTestResults((prev) => ({
+          ...prev,
+          [providerId]: { success: false, message: `Invalid key (HTTP ${res.status})` },
+        }));
+      }
+    } catch (err) {
+      setAiTestResults((prev) => ({
+        ...prev,
+        [providerId]: {
+          success: false,
+          message: err instanceof Error ? err.message : "Request failed",
+        },
+      }));
+    }
+
+    setAiTesting(null);
+  };
+
   const clearAllData = () => {
     if (confirm("Are you sure you want to clear all settings and data?")) {
       localStorage.removeItem("rf_settings");
@@ -113,9 +224,87 @@ export default function SettingsPage() {
       localStorage.removeItem("rf_recent_activity");
       localStorage.removeItem("rf_publish_channels");
       localStorage.removeItem("rf_integrations");
+      localStorage.removeItem("rf_ai_settings");
       setSettings(DEFAULT_SETTINGS);
+      setAiSettings({ activeProvider: 'openai', providers: {} });
       window.location.reload();
     }
+  };
+
+  const updateAIProviderSetting = (provider: AIProvider, apiKey: string) => {
+    setAiSettings((prev) => ({
+      ...prev,
+      providers: {
+        ...prev.providers,
+        [provider]: {
+          ...prev.providers[provider],
+          apiKey,
+        },
+      },
+    }));
+  };
+
+  const updateAIModel = (provider: AIProvider, model: string) => {
+    setAiSettings((prev) => ({
+      ...prev,
+      providers: {
+        ...prev.providers,
+        [provider]: {
+          ...prev.providers[provider],
+          model,
+        },
+      },
+    }));
+  };
+
+  const setActiveProvider = (provider: AIProvider) => {
+    setAiSettings((prev) => ({
+      ...prev,
+      activeProvider: provider,
+    }));
+  };
+
+  const testAIProviderApi = async (provider: AIProvider) => {
+    const providerSettings = aiSettings.providers[provider];
+    if (!providerSettings?.apiKey) return;
+
+    setTestingAi(provider);
+    setAiTestResult(null);
+
+    try {
+      const config = AI_PROVIDERS[provider];
+      const response = await fetch('/api/ai/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          apiKey: providerSettings.apiKey,
+          model: providerSettings.model || config.defaultModel,
+        }),
+      });
+
+      const result = await response.json();
+      setAiTestResult({
+        provider,
+        success: result.success,
+        message: result.message,
+      });
+    } catch {
+      setAiTestResult({
+        provider,
+        success: false,
+        message: 'Connection failed. Please try again.',
+      });
+    }
+
+    setTestingAi(null);
+  };
+
+  const toggleApiKeyVisibility = (provider: string) => {
+    setShowApiKeys((prev) => ({
+      ...prev,
+      [provider]: !prev[provider],
+    }));
   };
 
   return (
@@ -200,6 +389,320 @@ export default function SettingsPage() {
                   <li>Copy the token and paste above</li>
                 </ol>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* AI API Keys */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <SettingsIcon className="w-5 h-5" />
+                AI Provider Settings
+              </CardTitle>
+              <CardDescription>
+                Configure your AI provider API keys for changelog generation
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Active Provider Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Active Provider
+                </label>
+                <select
+                  value={aiSettings.activeProvider}
+                  onChange={(e) => setActiveProvider(e.target.value as AIProvider)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  {Object.values(AI_PROVIDERS).map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.name} - {provider.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Provider API Keys */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-900">API Keys</h4>
+                {Object.values(AI_PROVIDERS).map((provider) => {
+                  const providerSettings = aiSettings.providers[provider.id];
+                  const isActive = aiSettings.activeProvider === provider.id;
+                  
+                  return (
+                    <div 
+                      key={provider.id} 
+                      className={`p-4 rounded-lg border ${isActive ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{provider.name}</span>
+                          {isActive && (
+                            <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">Active</span>
+                          )}
+                        </div>
+                        {providerSettings?.apiKey && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => testAIProviderApi(provider.id)}
+                            disabled={testingAi === provider.id}
+                          >
+                            {testingAi === provider.id ? (
+                              <>
+                                <Loader2Icon className="w-3 h-3 mr-1 animate-spin" />
+                                Testing...
+                              </>
+                            ) : (
+                              'Test'
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 mb-3">{provider.description}</p>
+                      
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <Input
+                            type={showApiKeys[provider.id] ? "text" : "password"}
+                            placeholder={provider.placeholder}
+                            value={providerSettings?.apiKey || ''}
+                            onChange={(e) => updateAIProviderSetting(provider.id, e.target.value)}
+                            className="pr-12"
+                          />
+                          <button
+                            onClick={() => toggleApiKeyVisibility(provider.id)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                          >
+                            {showApiKeys[provider.id] ? (
+                              <EyeOffIcon className="w-4 h-4" />
+                            ) : (
+                              <EyeIcon className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Model</label>
+                          <select
+                            value={providerSettings?.model || provider.defaultModel}
+                            onChange={(e) => updateAIModel(provider.id, e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                          >
+                            {provider.models.map((model) => (
+                              <option key={model} value={model}>
+                                {model}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {aiTestResult && aiTestResult.provider === provider.id && (
+                        <div
+                          className={`mt-3 p-2 rounded text-sm ${
+                            aiTestResult.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {aiTestResult.success ? <CheckIcon className="w-3 h-3 inline mr-1" /> : null}
+                          {aiTestResult.message}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Button onClick={saveSettings}>
+                <SaveIcon className="w-4 h-4 mr-2" />
+                {saved ? "Saved!" : "Save AI Settings"}
+              </Button>
+
+              <div className="bg-amber-50 p-4 rounded-lg">
+                <h4 className="font-medium text-amber-700 mb-2">Important:</h4>
+                <ul className="text-sm text-amber-600 list-disc list-inside space-y-1">
+                  <li>API keys are stored locally in your browser</li>
+                  <li>Keys are sent securely to our server only when making AI requests</li>
+                  <li>We never store your API keys on our servers</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Providers */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <KeyIcon className="w-5 h-5" />
+                AI Providers
+              </CardTitle>
+              <CardDescription>
+                Add your own API keys for any OpenAI-compatible provider (OpenAI, Groq, DeepSeek, OpenRouter, Together, Mistral, xAI, Cerebras, Fireworks, or a custom endpoint). Keys are stored only in your browser.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Active Provider
+                </label>
+                <select
+                  value={settings.aiActiveProvider}
+                  onChange={(e) => updateSetting("aiActiveProvider", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  {Object.values(AI_PROVIDERS).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {settings.aiProviders[p.id]?.apiKey ? " ✓" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  The selected provider will be used for AI features (commit analysis, version suggestions, etc.).
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {Object.values(AI_PROVIDERS).map((provider) => {
+                  const cfg = settings.aiProviders[provider.id] || { apiKey: "" };
+                  const isActive = settings.aiActiveProvider === provider.id;
+                  const show = visibleAIKeys[provider.id];
+                  const result = aiTestResults[provider.id];
+                  return (
+                    <div
+                      key={provider.id}
+                      className={`border rounded-lg p-4 space-y-3 ${
+                        isActive ? "border-blue-400 bg-blue-50/30" : "border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900">{provider.name}</span>
+                          {isActive && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                              Active
+                            </span>
+                          )}
+                          {cfg.apiKey && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                              Configured
+                            </span>
+                          )}
+                        </div>
+                          {provider.baseUrl && (
+                          <a
+                            href={provider.baseUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            API Docs →
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <Input
+                          type={show ? "text" : "password"}
+                          placeholder={`${provider.name} API key`}
+                          value={cfg.apiKey}
+                          onChange={(e) => updateAIProvider(provider.id, { apiKey: e.target.value })}
+                          className="pr-12"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVisibleAIKeys((prev) => ({ ...prev, [provider.id]: !prev[provider.id] }))
+                          }
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        >
+                          {show ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Model</label>
+                          {provider.models ? (
+                            <select
+                              value={cfg.model || provider.defaultModel}
+                              onChange={(e) => updateAIProvider(provider.id, { model: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            >
+                              {provider.models.map((m) => (
+                                <option key={m} value={m}>
+                                  {m}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <Input
+                              placeholder={provider.defaultModel || "model-name"}
+                              value={cfg.model || ""}
+                              onChange={(e) => updateAIProvider(provider.id, { model: e.target.value })}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => testAIProvider(provider.id)}
+                          disabled={!cfg.apiKey || aiTesting === provider.id}
+                        >
+                          {aiTesting === provider.id ? (
+                            <>
+                              <Loader2Icon className="w-3 h-3 mr-2 animate-spin" />
+                              Testing...
+                            </>
+                          ) : (
+                            "Test"
+                          )}
+                        </Button>
+                        {!isActive && cfg.apiKey && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateSetting("aiActiveProvider", provider.id)}
+                          >
+                            Set as active
+                          </Button>
+                        )}
+                        {cfg.apiKey && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeAIProvider(provider.id)}
+                          >
+                            <TrashIcon className="w-3 h-3 mr-1" />
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+
+                      {result && result.message && (
+                        <div
+                          className={`text-xs p-2 rounded ${
+                            result.success
+                              ? "bg-green-50 text-green-700"
+                              : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          {result.success ? <CheckIcon className="w-3 h-3 inline mr-1" /> : null}
+                          {result.message}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Button onClick={saveSettings}>
+                <SaveIcon className="w-4 h-4 mr-2" />
+                {saved ? "Saved!" : "Save AI Providers"}
+              </Button>
             </CardContent>
           </Card>
 
