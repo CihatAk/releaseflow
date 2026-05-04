@@ -1,71 +1,119 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRepoCommits, parseCommits, generateFormatMarkdown, ChangelogFormat, GithubCommit, CommitType } from "@/lib/github/api";
+import {
+  getRepoCommits,
+  parseCommits,
+  generateFormatMarkdown,
+  detectVersionBump,
+  getNextVersion,
+  computeChangelogStats,
+  getLatestRelease,
+  getRepoTags,
+  ChangelogFormat,
+} from "@/lib/github/api";
+import { generateChangelogSummary } from "@/lib/changelog-formats";
 
 export async function POST(request: NextRequest) {
   try {
-    const { owner, repo, branch, days, format = "default", types, search } = await request.json();
+    const { owner, repo, branch, days, format = "default", types, search, tag, includeStats = true } = await request.json();
 
     if (!owner || !repo) {
-      return NextResponse.json(
-        { error: "Owner and repo are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Owner and repo are required" }, { status: 400 });
     }
 
-    const token = request.cookies.get("github_token")?.value;
+    const token = request.cookies.get("github_token")?.value || request.headers.get("x-github-token");
 
     if (!token) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const commits = await getRepoCommits(token, owner, repo, 100);
+    let commits;
 
-    // Filter by date
-    let filteredCommits = commits;
-    
-    if (days) {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - days);
-      filteredCommits = commits.filter((commit) => {
-        const commitDate = new Date(commit.author.date);
-        return commitDate >= cutoffDate;
-      });
+    if (tag) {
+      const tags = await getRepoTags(token, owner, repo);
+      const matchedTag = tags.find((t) => t.name === tag);
+      if (matchedTag) {
+        const compareRes = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/compare/${tag}...HEAD`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/vnd.github.v3+json",
+            },
+          }
+        );
+        if (compareRes.ok) {
+          const data = await compareRes.json();
+          commits = data.commits.map((c: any) => ({
+            sha: c.sha,
+            message: c.commit.message,
+            author: {
+              name: c.commit.author.name,
+              email: c.commit.author.email,
+              date: c.commit.author.date,
+            },
+            url: c.html_url,
+          }));
+        }
+      }
     }
 
-    // Parse commits
-    let sections = parseCommits(filteredCommits);
+    if (!commits) {
+      const perPage = Math.max(100, days ? days * 5 : 100);
+      const since = days
+        ? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+        : undefined;
+      commits = await getRepoCommits(token, owner, repo, perPage, since);
+    }
 
-    // Filter by commit types
+    let sections = parseCommits(commits);
+
     if (types && types.length > 0) {
-      sections = sections.filter(section => types.includes(section.type));
+      sections = sections.filter((section) => types.includes(section.type));
     }
 
-    // Search filter
     if (search) {
       const searchLower = search.toLowerCase();
-      sections = sections.map(section => ({
-        ...section,
-        commits: section.commits.filter(commit => 
-          commit.message.toLowerCase().includes(searchLower) ||
-          (commit.scope && commit.scope.toLowerCase().includes(searchLower)) ||
-          commit.sha.toLowerCase().includes(searchLower)
-        )
-      })).filter(section => section.commits.length > 0);
+      sections = sections
+        .map((section) => ({
+          ...section,
+          commits: section.commits.filter(
+            (commit) =>
+              commit.message.toLowerCase().includes(searchLower) ||
+              (commit.scope && commit.scope.toLowerCase().includes(searchLower)) ||
+              commit.sha.toLowerCase().includes(searchLower)
+          ),
+        }))
+        .filter((section) => section.commits.length > 0);
     }
 
-    // Generate markdown in selected format
     const markdown = generateFormatMarkdown(sections, format as ChangelogFormat);
+    const stats = computeChangelogStats(sections);
+    const bump = detectVersionBump(sections.flatMap((s) => s.commits));
+    const summary = generateChangelogSummary(sections);
+
+    let currentVersion = "v0.0.0";
+    const latestRelease = await getLatestRelease(token, owner, repo);
+    if (latestRelease) {
+      currentVersion = latestRelease.tag_name;
+    }
+
+    const suggestedVersion = getNextVersion(currentVersion, bump);
 
     return NextResponse.json({
       sections,
       markdown,
-      commitCount: sections.reduce((acc, s) => acc + s.commits.length, 0),
+      stats: includeStats ? stats : undefined,
+      summary,
+      version: {
+        current: currentVersion,
+        suggested: suggestedVersion,
+        bump,
+      },
+      commitCount: stats.totalCommits,
+      repo: `${owner}/${repo}`,
     });
   } catch (error) {
     console.error("Changelog generation error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate changelog" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate changelog" }, { status: 500 });
   }
 }
