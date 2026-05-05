@@ -17,6 +17,7 @@ model User {
   username   String      @unique
   email      String?
   avatar_url String?
+  plan       String      @default("free") // free, pro, team
   created_at DateTime    @default(now())
   last_login DateTime    @updatedAt
   repos      Repo[]
@@ -27,6 +28,7 @@ model User {
 
   @@index([github_id])
   @@index([username])
+  @@index([plan])
   @@index([created_at])
 }
 
