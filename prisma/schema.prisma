@@ -115,6 +115,7 @@ model Settings {
   defaultFormat String   @default("markdown")
   webhookUrl    String?
   theme         String   @default("system") // system, light, dark
+  language      String   @default("en") // en, tr, es, fr, de, etc.
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
