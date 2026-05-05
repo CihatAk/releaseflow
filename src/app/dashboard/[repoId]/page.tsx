@@ -143,10 +143,15 @@ export default function RepoDetailPage({
     setError(null);
 
     try {
+      // Get token from localStorage or settings
+      const settings = JSON.parse(localStorage.getItem("rf_settings") || "{}");
+      const token = settings.githubToken || "";
+
       const response = await fetch("/api/changelog/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token && { "x-github-token": token }),
         },
         body: JSON.stringify({ 
           owner, 
@@ -159,13 +164,14 @@ export default function RepoDetailPage({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate changelog");
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to generate changelog");
       }
 
       const data = await response.json();
       setChangelog(data);
-    } catch (err) {
-      setError("Failed to generate changelog. Please try again.");
+    } catch (err: any) {
+      setError(err.message || "Failed to generate changelog. Please try again.");
     } finally {
       setGenerating(false);
     }

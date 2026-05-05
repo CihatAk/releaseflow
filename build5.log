@@ -1,0 +1,149 @@
+﻿
+> releaseflow@1.0.0 build
+> next build
+
+node.exe : Warning: Custom Cache-Control headers detected for the following routes:
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\Cihatt\AppData\Roaming ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Custom...llowing routes::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  - /_next/static/(.*)
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+Ôû▓ Next.js 16.2.4 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  Ô£ô optimizeCss
+  ┬À optimizePackageImports
+
+ÔÜá The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: 
+https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+Ô£ô Compiled successfully in 14.5s
+  Running TypeScript ...
+  Finished TypeScript in 14.2s ...
+  Collecting page data using 11 workers ...
+ÔÜá Using edge runtime on a page currently disables static generation for that page
+  Generating static pages using 11 workers (0/102) ...
+  Generating static pages using 11 workers (25/102) 
+  Generating static pages using 11 workers (50/102) 
+  Generating static pages using 11 workers (76/102) 
+Ô£ô Generating static pages using 11 workers (102/102) in 1566ms
+  Finalizing page optimization ...
+
+Route (app)
+Ôöî Ôùï /
+Ôö£ Ôùï /_not-found
+Ôö£ Ôùï /admin
+Ôö£ Ôùï /admin/forgot-password
+Ôö£ Ôùï /admin/login
+Ôö£ Ôùï /aggregator
+Ôö£ Ôùï /ai-studio
+Ôö£ Ôùï /analytics
+Ôö£ ãÆ /api/activity/routes
+Ôö£ ãÆ /api/admin/changelogs
+Ôö£ ãÆ /api/admin/check
+Ôö£ ãÆ /api/admin/feedback
+Ôö£ ãÆ /api/admin/login
+Ôö£ ãÆ /api/admin/stats
+Ôö£ ãÆ /api/admin/users
+Ôö£ ãÆ /api/admin/verify
+Ôö£ ãÆ /api/ai/analyze-commit
+Ôö£ ãÆ /api/ai/compare
+Ôö£ ãÆ /api/ai/group
+Ôö£ ãÆ /api/ai/improve-message
+Ôö£ ãÆ /api/ai/release-notes
+Ôö£ ãÆ /api/ai/rewrite
+Ôö£ ãÆ /api/ai/social
+Ôö£ ãÆ /api/ai/suggest-version
+Ôö£ ãÆ /api/ai/summary
+Ôö£ ãÆ /api/ai/test
+Ôö£ ãÆ /api/ai/translate
+Ôö£ ãÆ /api/auth/github
+Ôö£ ãÆ /api/changelog/badge/[slug]
+Ôö£ ãÆ /api/changelog/batch
+Ôö£ ãÆ /api/changelog/compare
+Ôö£ ãÆ /api/changelog/devto
+Ôö£ ãÆ /api/changelog/export
+Ôö£ ãÆ /api/changelog/generate
+Ôö£ ãÆ /api/changelog/public/[slug]
+Ôö£ ãÆ /api/changelog/quick
+Ôö£ ãÆ /api/custom-domain
+Ôö£ ãÆ /api/db/status
+Ôö£ ãÆ /api/email/subscribe
+Ôö£ ãÆ /api/github/release
+Ôö£ ãÆ /api/github/repos
+Ôö£ ãÆ /api/github/test
+Ôö£ ãÆ /api/integrations/jira
+Ôö£ ãÆ /api/integrations/notion
+Ôö£ ãÆ /api/integrations/slack-discord
+Ôö£ ãÆ /api/integrations/webhooks
+Ôö£ ãÆ /api/integrations/zapier
+Ôö£ ãÆ /api/payment/checkout
+Ôö£ ãÆ /api/payment/webhook
+Ôö£ ãÆ /api/ratelimit
+Ôö£ ãÆ /api/repos/connect
+Ôö£ ãÆ /api/repos/platforms
+Ôö£ ãÆ /api/rss
+Ôö£ ãÆ /api/scheduled/routes
+Ôö£ ãÆ /api/stats
+Ôö£ ãÆ /api/user/plan
+Ôö£ ãÆ /api/v1/changelog/[owner]/[repo]
+Ôö£ Ôùï /auto-tag
+Ôö£ Ôùï /batch
+Ôö£ Ôùï /brand
+Ôö£ Ôùï /burndown
+Ôö£ Ôùï /changelog-history
+Ôö£ Ôùï /collaborate
+Ôö£ Ôùï /compare
+Ôö£ Ôùï /contributors
+Ôö£ Ôùï /custom-domain
+Ôö£ Ôùï /custom-types
+Ôö£ Ôùï /dashboard
+Ôö£ ãÆ /dashboard/[repoId]
+Ôö£ Ôùï /database
+Ôö£ Ôùï /deploy
+Ôö£ Ôùï /drag-drop
+Ôö£ Ôùï /email-digest
+Ôö£ ãÆ /embed/[slug]
+Ôö£ Ôùï /feedback
+Ôö£ Ôùï /github-action
+Ôö£ Ôùï /impact
+Ôö£ Ôùï /import
+Ôö£ Ôùï /integrations
+Ôö£ Ôùï /language
+Ôö£ Ôùï /login
+Ôö£ Ôùï /login/callback
+Ôö£ Ôùï /marketplace
+Ôö£ Ôùï /pr-template
+Ôö£ Ôùï /preview
+Ôö£ Ôùï /pricing
+Ôö£ Ôùï /privacy
+Ôö£ Ôùï /privacy-policy
+Ôö£ Ôùï /publish
+Ôö£ Ôùï /publish-channels
+Ôö£ Ôùï /quick
+Ôö£ Ôùï /robots.txt
+Ôö£ Ôùï /scheduled
+Ôö£ Ôùï /settings
+Ôö£ Ôùï /short-url
+Ôö£ Ôùï /sitemap.xml
+Ôö£ Ôùï /team
+Ôö£ Ôùï /templates
+Ôö£ Ôùï /terms
+Ôö£ Ôùï /trends
+Ôö£ Ôùï /version
+Ôö£ Ôùï /waitlist
+Ôö£ Ôùï /watch
+Ôö£ Ôùï /webhooks
+Ôö£ Ôùï /widget
+Ôöö Ôùï /zapier
+
+
+ãÆ Proxy (Middleware)
+
+Ôùï  (Static)   prerendered as static content
+ãÆ  (Dynamic)  server-rendered on demand
+
