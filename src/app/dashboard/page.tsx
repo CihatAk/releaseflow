@@ -244,7 +244,12 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <nav className="space-y-1 p-4">
+         <nav className="space-y-1 p-4">
+           {/* Main Dashboard */}
+           <Link href="/dashboard" className="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium">
+             <LayoutGridIcon className="h-4 w-4" /> Dashboard
+           </Link>
+
            {/* Analytics Section - Collapsible */}
            <div>
              <button 
@@ -269,38 +274,6 @@ export default function DashboardPage() {
                  </Link>
                  <Link href="/contributors" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
                    👥 Contributors
-                 </Link>
-               </div>
-             )}
-           </div>
-
-           {/* Generate Section - Collapsible */}
-           <div>
-             <button 
-               onClick={() => toggleMenu("generate")}
-               className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
-             >
-               <span className="flex items-center gap-3">
-                 <DownloadIcon className="h-4 w-4" /> Generate
-               </span>
-               <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("generate") ? "rotate-180" : ""}`} />
-             </button>
-             {isMenuOpen("generate") && (
-               <div className="ml-4 mt-1 space-y-1">
-                 <Link href="/batch" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                   Batch Generate
-                 </Link>
-                 <Link href="/quick" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                   Quick Generate
-                 </Link>
-                 <Link href="/version" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                   Version Detect
-                 </Link>
-                 <Link href="/changelog-history" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                   History
-                 </Link>
-                 <Link href="/auto-tag" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                   🏷 Auto Tag
                  </Link>
                </div>
              )}
