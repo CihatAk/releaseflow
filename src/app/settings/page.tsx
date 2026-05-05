@@ -125,29 +125,29 @@ export default function SettingsPage() {
     setTestResult(null);
 
     try {
-      const response = await fetch("https://api.github.com/user", {
-        headers: {
-          Authorization: `Bearer ${settings.githubToken}`,
-          Accept: "application/vnd.github.v3+json",
-        },
+      const response = await fetch("/api/github/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: settings.githubToken }),
       });
 
-      if (response.ok) {
-        const user = await response.json();
+      const data = await response.json();
+
+      if (response.ok && data.success) {
         setTestResult({
           success: true,
-          message: `Connected as @${user.login}`,
+          message: data.message || "Bağlantı başarılı",
         });
       } else {
         setTestResult({
           success: false,
-          message: "Invalid token. Please check and try again.",
+          message: data.message || "Geçersiz token. Lütfen kontrol edin.",
         });
       }
     } catch {
       setTestResult({
         success: false,
-        message: "Connection failed. Please try again.",
+        message: "Bağlantı hatası. Lütfen tekrar deneyin.",
       });
     }
 
@@ -186,28 +186,31 @@ export default function SettingsPage() {
     setAiTestResults((prev) => ({ ...prev, [providerId]: { success: false, message: "" } }));
 
     try {
-      const baseURL = cfg.baseURL || meta?.baseUrl;
-      if (!baseURL) throw new Error("Base URL required");
-      const res = await fetch(`${baseURL.replace(/\/$/, "")}/models`, {
-        headers: { Authorization: `Bearer ${cfg.apiKey}` },
+      const response = await fetch("/api/ai/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: providerId,
+          apiKey: cfg.apiKey,
+          model: cfg.model || meta?.defaultModel,
+        }),
       });
-      if (res.ok) {
-        setAiTestResults((prev) => ({
-          ...prev,
-          [providerId]: { success: true, message: "API key is valid" },
-        }));
-      } else {
-        setAiTestResults((prev) => ({
-          ...prev,
-          [providerId]: { success: false, message: `Invalid key (HTTP ${res.status})` },
-        }));
-      }
+
+      const data = await response.json();
+
+      setAiTestResults((prev) => ({
+        ...prev,
+        [providerId]: {
+          success: data.success,
+          message: data.message || (data.success ? "API key geçerli" : "API key geçersiz"),
+        },
+      }));
     } catch (err) {
       setAiTestResults((prev) => ({
         ...prev,
         [providerId]: {
           success: false,
-          message: err instanceof Error ? err.message : "Request failed",
+          message: err instanceof Error ? err.message : "Bağlantı hatası",
         },
       }));
     }
@@ -272,14 +275,13 @@ export default function SettingsPage() {
     setAiTestResult(null);
 
     try {
-      const config = AI_PROVIDERS[provider];
       const response = await fetch('/api/ai/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider,
           apiKey: providerSettings.apiKey,
-          model: providerSettings.model || config.defaultModel,
+          model: providerSettings.model,
         }),
       });
 
@@ -293,7 +295,7 @@ export default function SettingsPage() {
       setAiTestResult({
         provider,
         success: false,
-        message: 'Connection failed. Please try again.',
+        message: 'Bağlantı hatası. Lütfen tekrar deneyin.',
       });
     }
 

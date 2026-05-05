@@ -553,7 +553,7 @@ export async function getUserRepos(accessToken: string): Promise<GithubRepo[]> {
 }
 
 export async function getRepoCommits(
-  accessToken: string,
+  accessToken: string | null | undefined,
   owner: string,
   repo: string,
   perPage: number = 100,
@@ -562,11 +562,16 @@ export async function getRepoCommits(
   let url = `${GITHUB_API_URL}/repos/${owner}/${repo}/commits?per_page=${perPage}`;
   if (since) url += `&since=${encodeURIComponent(since)}`;
 
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+  };
+  
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
   const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/vnd.github.v3+json",
-    },
+    headers,
     next: { revalidate: 30 },
   });
 
@@ -701,18 +706,21 @@ export async function getRepoInfo(
 }
 
 export async function getLatestRelease(
-  accessToken: string,
+  accessToken: string | null | undefined,
   owner: string,
   repo: string
 ): Promise<{ tag_name: string; name: string } | null> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+  };
+  
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+  
   const response = await fetch(
     `${GITHUB_API_URL}/repos/${owner}/${repo}/releases/latest`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/vnd.github.v3+json",
-      },
-    }
+    { headers }
   );
 
   if (!response.ok) return null;
@@ -722,18 +730,21 @@ export async function getLatestRelease(
 }
 
 export async function getRepoTags(
-  accessToken: string,
+  accessToken: string | null | undefined,
   owner: string,
   repo: string
 ): Promise<{ name: string; commit: { sha: string } }[]> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+  };
+  
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+  
   const response = await fetch(
     `${GITHUB_API_URL}/repos/${owner}/${repo}/tags`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/vnd.github.v3+json",
-      },
-    }
+    { headers }
   );
 
   if (!response.ok) return [];

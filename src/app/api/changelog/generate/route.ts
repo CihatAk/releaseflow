@@ -20,10 +20,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Owner and repo are required" }, { status: 400 });
     }
 
-    const token = request.cookies.get("github_token")?.value || request.headers.get("x-github-token");
+    // Token is optional for public repos
+    const token = request.headers.get("x-github-token") || 
+                  request.cookies.get("github_token")?.value ||
+                  process.env.GITHUB_TOKEN || // Fallback to env token
+                  null;
 
-    if (!token) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github.v3+json",
+    };
+    
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     let commits;
@@ -34,12 +42,7 @@ export async function POST(request: NextRequest) {
       if (matchedTag) {
         const compareRes = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/compare/${tag}...HEAD`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/vnd.github.v3+json",
-            },
-          }
+          { headers }
         );
         if (compareRes.ok) {
           const data = await compareRes.json();
@@ -112,8 +115,14 @@ export async function POST(request: NextRequest) {
       commitCount: stats.totalCommits,
       repo: `${owner}/${repo}`,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Changelog generation error:", error);
-    return NextResponse.json({ error: "Failed to generate changelog" }, { status: 500 });
+    
+    // More specific error messages
+    if (error?.message?.includes("404") || error?.message?.includes("Not Found")) {
+      return NextResponse.json({ error: "Repository not found. Make sure the repository exists and is accessible." }, { status: 404 });
+    }
+    
+    return NextResponse.json({ error: error?.message || "Failed to generate changelog" }, { status: 500 });
   }
 }
