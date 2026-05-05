@@ -30,12 +30,15 @@ import {
   getAllConfiguredAIConfigs,
 } from "@/lib/aiClient";
 
-type Tab = "rewriter" | "translator" | "social" | "playground";
+type Tab = "rewriter" | "translator" | "social" | "playground" | "release-notes" | "summary" | "grouping";
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }>; desc: string }[] = [
   { id: "rewriter", label: "Rewriter", icon: ZapIcon, desc: "Transform commits into polished release notes" },
+  { id: "release-notes", label: "Release Notes", icon: MessageSquareIcon, desc: "AI-generated release notes with tone/length control" },
+  { id: "summary", label: "Smart Summary", icon: GlobeIcon, desc: "AI-powered summaries for changelogs" },
   { id: "translator", label: "Translator", icon: GlobeIcon, desc: "Translate release notes to multiple languages" },
   { id: "social", label: "Social Kit", icon: MessageSquareIcon, desc: "Generate posts for Twitter, LinkedIn, email, blog" },
+  { id: "grouping", label: "Smart Grouping", icon: CodeIcon, desc: "AI-powered commit grouping and organization" },
   { id: "playground", label: "Playground", icon: CodeIcon, desc: "Compare providers side-by-side with one prompt" },
 ];
 
@@ -753,10 +756,255 @@ export default function AIStudioPage() {
         </div>
 
         {tab === "rewriter" && <Rewriter activeConfig={activeConfig} />}
+        {tab === "release-notes" && <ReleaseNotes activeConfig={activeConfig} />}
+        {tab === "summary" && <SmartSummary activeConfig={activeConfig} />}
         {tab === "translator" && <Translator activeConfig={activeConfig} />}
         {tab === "social" && <Social activeConfig={activeConfig} />}
+        {tab === "grouping" && <SmartGrouping activeConfig={activeConfig} />}
         {tab === "playground" && <Playground />}
       </div>
     </div>
+  );
+}
+
+/* --------------- Release Notes --------------- */
+
+function ReleaseNotes({ activeConfig }: { activeConfig: AIConfig | undefined }) {
+  const [sections, setSections] = useState("");
+  const [repoName, setRepoName] = useState("");
+  const [version, setVersion] = useState("");
+  const [tone, setTone] = useState("professional");
+  const [length, setLength] = useState("standard");
+  const [output, setOutput] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const run = async () => {
+    setLoading(true);
+    setOutput(null);
+    try {
+      const res = await fetch("/api/ai/release-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sections: JSON.parse(sections || "[]"), repoName, version, tone, length, aiConfig: activeConfig }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      setOutput(data);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>AI Release Notes Generator</CardTitle>
+        <CardDescription>Generate professional release notes from commits</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Textarea
+          placeholder='Paste sections JSON: [{"type":"feat","label":"Features","commits":[...]}]'
+          value={sections}
+          onChange={(e) => setSections(e.target.value)}
+          rows={6}
+          className="font-mono text-xs"
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Repo Name</label>
+            <Input value={repoName} onChange={(e) => setRepoName(e.target.value)} placeholder="ReleaseFlow" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Version</label>
+            <Input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="v2.3.0" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Tone</label>
+            <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+              <option value="professional">Professional</option>
+              <option value="casual">Casual</option>
+              <option value="enthusiastic">Enthusiastic</option>
+              <option value="technical">Technical</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Length</label>
+            <select value={length} onChange={(e) => setLength(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+              <option value="concise">Concise</option>
+              <option value="standard">Standard</option>
+              <option value="detailed">Detailed</option>
+            </select>
+          </div>
+        </div>
+        <Button onClick={run} disabled={!activeConfig || loading || !sections.trim()}>
+          {loading ? <><Loader2Icon className="w-4 h-4 mr-2 animate-spin" />Generating...</> : <><MessageSquareIcon className="w-4 h-4 mr-2" />Generate Release Notes</>}
+        </Button>
+        {output && (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm text-gray-600">
+                {output.model} · {output.latencyMs}ms
+              </div>
+              <CopyButton text={output.releaseNotes} />
+            </div>
+            <pre className="whitespace-pre-wrap text-sm font-mono">{output.releaseNotes}</pre>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* --------------- Smart Summary --------------- */
+
+function SmartSummary({ activeConfig }: { activeConfig: AIConfig | undefined }) {
+  const [sections, setSections] = useState("");
+  const [style, setStyle] = useState("bullet");
+  const [output, setOutput] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const run = async () => {
+    setLoading(true);
+    setOutput(null);
+    try {
+      const res = await fetch("/api/ai/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sections: JSON.parse(sections || "[]"), style, aiConfig: activeConfig }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      setOutput(data);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Smart Summary Generator</CardTitle>
+        <CardDescription>AI-powered changelog summaries</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Textarea
+          placeholder='Paste sections JSON: [{"type":"feat","label":"Features","commits":[...]}]'
+          value={sections}
+          onChange={(e) => setSections(e.target.value)}
+          rows={6}
+          className="font-mono text-xs"
+        />
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Style</label>
+          <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+            <option value="bullet">Bullet Points</option>
+            <option value="paragraph">Paragraph</option>
+            <option value="executive">Executive</option>
+            <option value="social">Social Media</option>
+          </select>
+        </div>
+        <Button onClick={run} disabled={!activeConfig || loading || !sections.trim()}>
+          {loading ? <><Loader2Icon className="w-4 h-4 mr-2 animate-spin" />Generating...</> : <><GlobeIcon className="w-4 h-4 mr-2" />Generate Summary</>}
+        </Button>
+        {output && (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm text-gray-600">
+                {output.style} · {output.model} · {output.latencyMs}ms
+              </div>
+              <CopyButton text={output.summary} />
+            </div>
+            <p className="text-sm">{output.summary}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* --------------- Smart Grouping --------------- */
+
+function SmartGrouping({ activeConfig }: { activeConfig: AIConfig | undefined }) {
+  const [commits, setCommits] = useState("");
+  const [groups, setGroups] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const run = async () => {
+    setLoading(true);
+    try {
+      const parsed = JSON.parse(commits || "[]");
+      const res = await fetch("/api/ai/group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commits: parsed, strategy: "smart", aiConfig: activeConfig }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      setGroups(data.groups || []);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Smart Commit Grouping</CardTitle>
+        <CardDescription>AI-powered intelligent commit grouping</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Textarea
+          placeholder='Paste commits JSON: [{"message":"feat: add X","sha":"abc123","author":"user"},...]'
+          value={commits}
+          onChange={(e) => setCommits(e.target.value)}
+          rows={8}
+          className="font-mono text-xs"
+        />
+        <Button onClick={run} disabled={!activeConfig || loading || !commits.trim()}>
+          {loading ? <><Loader2Icon className="w-4 h-4 mr-2 animate-spin" />Grouping...</> : <><CodeIcon className="w-4 h-4 mr-2" />Smart Group</>}
+        </Button>
+        {groups.length > 0 && (
+          <div className="space-y-3">
+            {groups.map((g, i) => (
+              <div key={i} className="bg-gray-50 p-3 rounded-lg">
+                <div className="font-medium text-sm mb-2">{g.title}</div>
+                {g.reason && <div className="text-xs text-gray-500 mb-2">{g.reason}</div>}
+                <div className="space-y-1">
+                  {g.commits?.map((c: any, j: number) => (
+                    <div key={j} className="text-xs text-gray-700">
+                      · {c.message}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* --------------- AI Copy Button --------------- */
+
+function AICopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+    >
+      {copied ? <><CheckIcon className="w-3 h-3 mr-1" />Copied</> : <><CopyIcon className="w-3 h-3 mr-1" />Copy</>}
+    </Button>
   );
 }

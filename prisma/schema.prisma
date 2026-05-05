@@ -8,17 +8,21 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model User {
-  id          String   @id @default(cuid())
-  github_id   Int      @unique
-  username   String   @unique
+  id         String      @id @default(cuid())
+  github_id  Int         @unique
+  username   String      @unique
   email      String?
   avatar_url String?
-  created_at DateTime @default(now())
-  last_login DateTime @updatedAt
+  created_at DateTime    @default(now())
+  last_login DateTime    @updatedAt
   repos      Repo[]
+  aiKeys     UserAiKey[]
+  settings   Settings?
+  Analytics  Analytics[]
 
   @@index([github_id])
   @@index([username])
@@ -26,17 +30,22 @@ model User {
 }
 
 model Repo {
-  id            String       @id @default(cuid())
-  name          String
-  full_name     String       @unique
-  owner        String
-  private      Boolean      @default(false)
-  github_token String?
-  created_at   DateTime     @default(now())
-  updated_at   DateTime     @updatedAt
-  user_id      String
-  user        User         @relation(fields: [user_id], references: [id])
-  changelogs  Changelog[]
+  id             String      @id @default(cuid())
+  name           String
+  full_name      String      @unique
+  owner          String
+  private        Boolean     @default(false)
+  github_token   String?
+  description    String?
+  stars          Int         @default(0)
+  forks          Int         @default(0)
+  default_branch String      @default("main")
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+  user_id        String
+  user           User        @relation(fields: [user_id], references: [id])
+  changelogs     Changelog[]
+  Analytics      Analytics[]
 
   @@index([owner])
   @@index([user_id])
@@ -46,19 +55,37 @@ model Repo {
 }
 
 model Changelog {
-  id          String   @id @default(cuid())
-  version     String
-  content    String
-  published  Boolean  @default(false)
-  slug        String?
-  created_at DateTime @default(now())
-  repo_id     String
-  repo       Repo     @relation(fields: [repo_id], references: [id])
+  id         String           @id @default(cuid())
+  version    String
+  content    String // Markdown content
+  published  Boolean          @default(false)
+  slug       String? // URL-friendly slug: owner-repo-timestamp
+  format     String           @default("markdown") // markdown, html, json, etc.
+  stats      Json? // Commit stats, contributors, etc.
+  repo_id    String
+  repo       Repo             @relation(fields: [repo_id], references: [id])
+  events     ChangelogEvent[]
+  created_at DateTime         @default(now())
+  updated_at DateTime         @updatedAt
 
   @@index([repo_id])
   @@index([version])
   @@index([published])
   @@index([slug])
+  @@index([created_at])
+  @@index([updated_at])
+}
+
+model ChangelogEvent {
+  id          String     @id @default(cuid())
+  event       String // 'view', 'export', 'generate', 'publish'
+  changelogId String?
+  changelog   Changelog? @relation(fields: [changelogId], references: [id])
+  metadata    Json? // Extra data (format, stats, etc.)
+  created_at  DateTime   @default(now())
+
+  @@index([event])
+  @@index([changelogId])
   @@index([created_at])
 }
 
@@ -66,27 +93,34 @@ model Feedback {
   id         String   @id @default(cuid())
   name       String   @default("Anonymous")
   email      String?
-  category  String   @default("feedback")
-  message   String
+  category   String   @default("feedback")
+  message    String
   created_at DateTime @default(now())
 }
 
 model Settings {
-  id             String   @id @default(cuid())
-  githubToken    String?
+  id            String   @id @default(cuid())
+  user_id       String   @unique
+  user          User     @relation(fields: [user_id], references: [id])
+  githubToken   String?
   autoPublish   Boolean  @default(false)
   defaultFormat String   @default("markdown")
-  webhookUrl   String?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  webhookUrl    String?
+  theme         String   @default("system") // system, light, dark
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([user_id])
 }
 
 model UserAiKey {
   id         String   @id @default(cuid())
   user_id    String
-  provider   String   // openai, groq, anthropic, google, mistral, etc.
-  key        String   // encrypted api key
+  user       User     @relation(fields: [user_id], references: [id])
+  provider   String // openai, groq, anthropic, mistral, etc.
+  key        String // encrypted api key
   label      String?
+  model      String? // default model for this provider
   is_active  Boolean  @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -94,4 +128,20 @@ model UserAiKey {
   @@index([user_id])
   @@index([provider])
   @@index([is_active])
+}
+
+model Analytics {
+  id         String   @id @default(cuid())
+  event      String // 'page_view', 'changelog_generate', 'ai_call', etc.
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  repoId     String?
+  repo       Repo?    @relation(fields: [repoId], references: [id])
+  metadata   Json? // Extra data
+  created_at DateTime @default(now())
+
+  @@index([event])
+  @@index([userId])
+  @@index([repoId])
+  @@index([created_at])
 }

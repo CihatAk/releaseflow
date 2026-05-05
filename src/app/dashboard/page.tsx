@@ -28,16 +28,10 @@ import {
   CheckIcon,
   UploadIcon,
   LinkIcon,
-  GlobeIcon,
-  SendIcon,
-  GitPullRequestIcon,
+  ZapIcon,
   ChevronDownIcon,
   FileCodeIcon,
-  WebhookIcon,
-  UsersIcon,
-  TagIcon,
   CrownIcon,
-  EyeOffIcon,
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -278,35 +272,44 @@ export default function DashboardPage() {
                 <Link href="/version" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
                   Version Detect
                 </Link>
+                <Link href="/changelog-history" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                  History
+                </Link>
               </div>
             )}
           </div>
 
-          {/* Tools Section - Collapsible */}
-          <div>
-            <button 
-              onClick={() => toggleMenu("tools")}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
-            >
-              <span className="flex items-center gap-3">
-                <FileTextIcon className="h-4 w-4" /> Tools
-              </span>
-              <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("tools") ? "rotate-180" : ""}`} />
-            </button>
-            {isMenuOpen("tools") && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link href="/templates" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Templates
-                </Link>
-                <Link href="/custom-types" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Custom Types
-                </Link>
-                <Link href="/marketplace" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Marketplace
-                </Link>
-              </div>
-            )}
-          </div>
+           {/* AI Studio Section - Collapsible */}
+           <div>
+             <button 
+               onClick={() => toggleMenu("ai")}
+               className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+             >
+               <span className="flex items-center gap-3">
+                 <ZapIcon className="h-4 w-4" /> AI Studio
+               </span>
+               <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("ai") ? "rotate-180" : ""}`} />
+             </button>
+             {isMenuOpen("ai") && (
+               <div className="ml-4 mt-1 space-y-1">
+                 <Link href="/ai-studio" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   AI Studio
+                 </Link>
+                 <Link href="/ai-studio/rewrite" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Rewrite
+                 </Link>
+                 <Link href="/ai-studio/translate" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Translate
+                 </Link>
+                 <Link href="/ai-studio/social" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Social Kit
+                 </Link>
+                 <Link href="/ai-studio/compare" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Compare
+                 </Link>
+               </div>
+             )}
+           </div>
 
           {/* Compare Section - Collapsible */}
           <div>
