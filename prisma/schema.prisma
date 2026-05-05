@@ -41,6 +41,7 @@ model Repo {
   stars          Int         @default(0)
   forks          Int         @default(0)
   default_branch String      @default("main")
+  collaborators  Json?        // Array of user IDs/info for collaboration
   created_at     DateTime    @default(now())
   updated_at     DateTime    @updatedAt
   user_id        String
