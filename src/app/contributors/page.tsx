@@ -39,6 +39,24 @@ export default function ContributorsPage() {
     setContributors([]);
 
     try {
+      // Önce Supabase'dan kontrol et (eğer varsa)
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        // Supabase'dan contributor verilerini çek (Analytics tablosu)
+        const response = await fetch(`/api/analytics?event=contributor_fetch&repo=${repoName}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.events?.length > 0) {
+            const savedContributors = data.events[0]?.metadata?.contributors || [];
+            if (savedContributors.length > 0) {
+              setContributors(savedContributors);
+              setLoading(false);
+              return;
+            }
+          }
+        }
+      }
+
+      // Supabase'da yoksa GitHub API'dan çek
       const res = await fetch(`https://api.github.com/repos/${owner}/${repoName}/contributors?per_page=50`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -52,6 +70,18 @@ export default function ContributorsPage() {
 
       const data = await res.json();
       setContributors(data);
+
+      // Supabase'ya kaydet (Analytics tablosuna)
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        await fetch("/api/analytics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: "contributor_fetch",
+            metadata: { repo: repoName, contributors: data },
+          }),
+        });
+      }
     } catch (err: any) {
       setError(err.message || "Failed to fetch");
     } finally {
