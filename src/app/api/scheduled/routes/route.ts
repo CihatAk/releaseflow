@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 interface ScheduledJob {
   id: string;
@@ -11,14 +12,6 @@ interface ScheduledJob {
   nextRun: string;
   createdAt: string;
 }
-
-const scheduledJobs: Map<string, ScheduledJob> = new Map();
-
-const CRON_EXPRESSIONS: Record<string, string> = {
-  daily: "0 0 * * *",
-  weekly: "0 0 * * 1",
-  monthly: "0 0 1 * *",
-};
 
 function calculateNextRun(schedule: string): string {
   const now = new Date();
@@ -39,59 +32,129 @@ function calculateNextRun(schedule: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const repoId = searchParams.get("repoId");
-  
-  if (repoId) {
-    const job = Array.from(scheduledJobs.values()).find(j => j.repoId === repoId);
-    if (job) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const repoId = searchParams.get("repoId");
+
+    // Supabase bağlı mı kontrol et
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({
+        jobs: [],
+        schedules: [
+          { id: "daily", label: "Daily", cron: "0 0 * * *" },
+          { id: "weekly", label: "Weekly", cron: "0 0 * * 1" },
+          { id: "monthly", label: "Monthly", cron: "0 0 1 * *" },
+        ],
+        message: "Demo mode - Supabase bağlantısı yok",
+      });
+    }
+
+    if (repoId) {
+      const job = await prisma.changelog.findFirst({
+        where: { repo_id: repoId, published: false },
+        orderBy: { created_at: "desc" },
+      });
       return NextResponse.json({ job });
     }
-    return NextResponse.json({ job: null });
+
+    // Tüm scheduled changelog'ları getir (published=false)
+    const changelogs = await prisma.changelog.findMany({
+      where: { published: false },
+      orderBy: { created_at: "desc" },
+      take: 100,
+    });
+
+    const jobs = changelogs.map((c) => ({
+      id: c.id,
+      repoId: c.repo_id,
+      repoName: c.title || c.version || "Untitled",
+      schedule: "manual",
+      format: c.format || "markdown",
+      enabled: true,
+      lastRun: c.published ? c.updated_at.toISOString() : null,
+      nextRun: c.created_at.toISOString(),
+      createdAt: c.created_at.toISOString(),
+    }));
+
+    return NextResponse.json({
+      jobs,
+      schedules: [
+        { id: "daily", label: "Daily", cron: "0 0 * * *" },
+        { id: "weekly", label: "Weekly", cron: "0 0 * * 1" },
+        { id: "monthly", label: "Monthly", cron: "0 0 1 * *" },
+      ],
+    });
+  } catch (error) {
+    console.error("Scheduled GET error:", error);
+    return NextResponse.json(
+      { error: "Scheduled jobs yüklenemedi" },
+      { status: 500 }
+    );
   }
-  
-  return NextResponse.json({
-    jobs: Array.from(scheduledJobs.values()),
-    schedules: [
-      { id: "daily", label: "Daily", cron: CRON_EXPRESSIONS.daily },
-      { id: "weekly", label: "Weekly", cron: CRON_EXPRESSIONS.weekly },
-      { id: "monthly", label: "Monthly", cron: CRON_EXPRESSIONS.monthly },
-    ],
-  });
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { repoId, repoName, schedule, format } = body;
-    
+
     if (!repoId || !schedule || !format) {
       return NextResponse.json(
         { error: "repoId, schedule, and format are required" },
         { status: 400 }
       );
     }
-    
-    const job: ScheduledJob = {
-      id: `job_${Date.now()}`,
-      repoId,
-      repoName,
-      schedule,
-      format,
-      enabled: true,
-      lastRun: null,
-      nextRun: calculateNextRun(schedule),
-      createdAt: new Date().toISOString(),
-    };
-    
-    scheduledJobs.set(job.id, job);
-    
+
+    // Supabase yoksa hata dön
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Supabase bağlantısı gerekli" },
+        { status: 400 }
+      );
+    }
+
+    // Repo'yu kontrol et
+    const repo = await prisma.repo.findUnique({
+      where: { id: repoId },
+    });
+
+    if (!repo) {
+      return NextResponse.json(
+        { error: "Repository bulunamadı" },
+        { status: 404 }
+      );
+    }
+
+    // Scheduled changelog oluştur
+    const changelog = await prisma.changelog.create({
+      data: {
+        title: `${repoName} - Scheduled`,
+        version: "0.0.0", // Default version
+        content: "",
+        format,
+        published: false,
+        repo_id: repoId,
+        user_id: repo.user_id,
+      },
+    });
+
     return NextResponse.json({
       success: true,
-      job,
+      job: {
+        id: changelog.id,
+        repoId,
+        repoName,
+        schedule,
+        format,
+        enabled: true,
+        lastRun: null,
+        nextRun: calculateNextRun(schedule),
+        createdAt: changelog.created_at.toISOString(),
+      },
       message: `Scheduled ${schedule} generation for ${repoName}`,
     });
   } catch (error) {
+    console.error("Scheduled POST error:", error);
     return NextResponse.json(
       { error: "Failed to create scheduled job" },
       { status: 500 }
@@ -100,17 +163,32 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const jobId = searchParams.get("id");
-  
-  if (!jobId) {
-    return NextResponse.json({ error: "Job ID is required" }, { status: 400 });
-  }
-  
-  if (scheduledJobs.has(jobId)) {
-    scheduledJobs.delete(jobId);
+  try {
+    const { searchParams } = new URL(request.url);
+    const jobId = searchParams.get("id");
+
+    if (!jobId) {
+      return NextResponse.json({ error: "Job ID is required" }, { status: 400 });
+    }
+
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Supabase bağlantısı gerekli" },
+        { status: 400 }
+      );
+    }
+
+    // Changelog'u sil (published=false olanları)
+    await prisma.changelog.deleteMany({
+      where: { id: jobId, published: false },
+    });
+
     return NextResponse.json({ success: true, message: "Job deleted" });
+  } catch (error) {
+    console.error("Scheduled DELETE error:", error);
+    return NextResponse.json(
+      { error: "Job not found" },
+      { status: 404 }
+    );
   }
-  
-  return NextResponse.json({ error: "Job not found" }, { status: 404 });
 }

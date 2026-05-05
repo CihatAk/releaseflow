@@ -20,6 +20,7 @@ model User {
   created_at DateTime    @default(now())
   last_login DateTime    @updatedAt
   repos      Repo[]
+  changelogs Changelog[] // User'ın changelog'ları
   aiKeys     UserAiKey[]
   settings   Settings?
   Analytics  Analytics[]
@@ -56,19 +57,23 @@ model Repo {
 
 model Changelog {
   id         String           @id @default(cuid())
+  title      String?          // Optional title for the changelog
   version    String
-  content    String // Markdown content
+  content    String           // Markdown content
   published  Boolean          @default(false)
-  slug       String? // URL-friendly slug: owner-repo-timestamp
+  slug       String?          // URL-friendly slug: owner-repo-timestamp
   format     String           @default("markdown") // markdown, html, json, etc.
-  stats      Json? // Commit stats, contributors, etc.
+  stats      Json?            // Commit stats, contributors, etc.
   repo_id    String
   repo       Repo             @relation(fields: [repo_id], references: [id])
+  user_id    String?
+  user       User?            @relation(fields: [user_id], references: [id])
   events     ChangelogEvent[]
   created_at DateTime         @default(now())
   updated_at DateTime         @updatedAt
 
   @@index([repo_id])
+  @@index([user_id])
   @@index([version])
   @@index([published])
   @@index([slug])
