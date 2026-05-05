@@ -245,39 +245,66 @@ export default function DashboardPage() {
         </div>
 
         <nav className="space-y-1 p-4">
-          {/* Main Dashboard */}
-          <Link href="/dashboard" className="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium">
-            <LayoutGridIcon className="h-4 w-4" /> Dashboard
-          </Link>
+           {/* Analytics Section - Collapsible */}
+           <div>
+             <button 
+               onClick={() => toggleMenu("analytics")}
+               className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+             >
+               <span className="flex items-center gap-3">
+                 <BarChart3Icon className="h-4 w-4" /> Analytics
+               </span>
+               <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("analytics") ? "rotate-180" : ""}`} />
+             </button>
+             {isMenuOpen("analytics") && (
+               <div className="ml-4 mt-1 space-y-1">
+                 <Link href="/analytics" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   📊 GitHub Analytics
+                 </Link>
+                 <Link href="/trends" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   📈 Trends
+                 </Link>
+                 <Link href="/burndown" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   🔥 Burndown
+                 </Link>
+                 <Link href="/contributors" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   👥 Contributors
+                 </Link>
+               </div>
+             )}
+           </div>
 
-          {/* Generate Section - Collapsible */}
-          <div>
-            <button 
-              onClick={() => toggleMenu("generate")}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
-            >
-              <span className="flex items-center gap-3">
-                <DownloadIcon className="h-4 w-4" /> Generate
-              </span>
-              <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("generate") ? "rotate-180" : ""}`} />
-            </button>
-            {isMenuOpen("generate") && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link href="/batch" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Batch Generate
-                </Link>
-                <Link href="/quick" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Quick Generate
-                </Link>
-                <Link href="/version" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Version Detect
-                </Link>
-                <Link href="/changelog-history" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  History
-                </Link>
-              </div>
-            )}
-          </div>
+           {/* Generate Section - Collapsible */}
+           <div>
+             <button 
+               onClick={() => toggleMenu("generate")}
+               className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+             >
+               <span className="flex items-center gap-3">
+                 <DownloadIcon className="h-4 w-4" /> Generate
+               </span>
+               <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("generate") ? "rotate-180" : ""}`} />
+             </button>
+             {isMenuOpen("generate") && (
+               <div className="ml-4 mt-1 space-y-1">
+                 <Link href="/batch" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Batch Generate
+                 </Link>
+                 <Link href="/quick" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Quick Generate
+                 </Link>
+                 <Link href="/version" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Version Detect
+                 </Link>
+                 <Link href="/changelog-history" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   History
+                 </Link>
+                 <Link href="/auto-tag" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   🏷 Auto Tag
+                 </Link>
+               </div>
+             )}
+           </div>
 
            {/* AI Studio Section - Collapsible */}
            <div>
@@ -334,92 +361,101 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Publish Section - Collapsible */}
-          <div>
-            <button 
-              onClick={() => toggleMenu("publish")}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
-            >
-              <span className="flex items-center gap-3">
-                <UploadIcon className="h-4 w-4" /> Publish
-              </span>
-              <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("publish") ? "rotate-180" : ""}`} />
-            </button>
-            {isMenuOpen("publish") && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link href="/publish" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  GitHub Release
-                </Link>
-                <Link href="/publish-channels" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Channels
-                </Link>
-                <Link href="/import" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Import
-                </Link>
-              </div>
-            )}
-          </div>
+           {/* Publish Section - Collapsible */}
+           <div>
+             <button 
+               onClick={() => toggleMenu("publish")}
+               className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+             >
+               <span className="flex items-center gap-3">
+                 <UploadIcon className="h-4 w-4" /> Publish
+               </span>
+               <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("publish") ? "rotate-180" : ""}`} />
+             </button>
+             {isMenuOpen("publish") && (
+               <div className="ml-4 mt-1 space-y-1">
+                 <Link href="/publish" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   GitHub Release
+                 </Link>
+                 <Link href="/publish-channels" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Channels
+                 </Link>
+                 <Link href="/email-digest" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   📧 Email Digest
+                 </Link>
+                 <Link href="/short-url" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   🔗 Short URL
+                 </Link>
+                 <Link href="/embed" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   📑 Embed Widget
+                 </Link>
+               </div>
+             )}
+           </div>
 
-          {/* Automate Section - Collapsible */}
-          <div>
-            <button 
-              onClick={() => toggleMenu("automate")}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
-            >
-              <span className="flex items-center gap-3">
-                <ClockIcon className="h-4 w-4" /> Automate
-              </span>
-              <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("automate") ? "rotate-180" : ""}`} />
-            </button>
-            {isMenuOpen("automate") && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link href="/watch" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Watch Repos
-                </Link>
-                <Link href="/scheduled" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Scheduled
-                </Link>
-                <Link href="/aggregator" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Aggregator
-                </Link>
-              </div>
-            )}
-          </div>
+           {/* Automate Section - Collapsible */}
+           <div>
+             <button 
+               onClick={() => toggleMenu("automate")}
+               className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+             >
+               <span className="flex items-center gap-3">
+                 <ClockIcon className="h-4 w-4" /> Automate
+               </span>
+               <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("automate") ? "rotate-180" : ""}`} />
+             </button>
+             {isMenuOpen("automate") && (
+               <div className="ml-4 mt-1 space-y-1">
+                 <Link href="/watch" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Watch Repos
+                 </Link>
+                 <Link href="/scheduled" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   ⏰ Scheduled
+                 </Link>
+                 <Link href="/github-action" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   🤖 GitHub Action
+                 </Link>
+                 <Link href="/pr-template" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   📄 PR Template
+                 </Link>
+                 <Link href="/waitlist" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   ⏳ Waitlist
+                 </Link>
+               </div>
+             )}
+           </div>
 
-          {/* Integrations Section - Collapsible */}
-          <div>
-            <button 
-              onClick={() => toggleMenu("integrations")}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
-            >
-              <span className="flex items-center gap-3">
-                <LinkIcon className="h-4 w-4" /> Integrations
-              </span>
-              <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("integrations") ? "rotate-180" : ""}`} />
-            </button>
-            {isMenuOpen("integrations") && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link href="/integrations" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  All Integrations
-                </Link>
-                <Link href="/webhooks" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  🔗 Webhooks
-                </Link>
-                <Link href="/brand" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  🎨 Branding
-                </Link>
-                <Link href="/team" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  👥 Team
-                </Link>
-                <Link href="/ai-studio" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  ⚡ AI Studio
-                </Link>
-                <Link href="/settings" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Settings
-                </Link>
-              </div>
-            )}
-          </div>
+           {/* Integrations Section - Collapsible */}
+           <div>
+             <button 
+               onClick={() => toggleMenu("integrations")}
+               className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+             >
+               <span className="flex items-center gap-3">
+                 <LinkIcon className="h-4 w-4" /> Integrations
+               </span>
+               <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("integrations") ? "rotate-180" : ""}`} />
+             </button>
+             {isMenuOpen("integrations") && (
+               <div className="ml-4 mt-1 space-y-1">
+                 <Link href="/integrations" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   All Integrations
+                 </Link>
+                 <Link href="/webhooks" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   🔗 Webhooks
+                 </Link>
+                 <Link href="/brand" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   🎨 Branding
+                 </Link>
+                 <Link href="/team" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   👥 Team
+                 </Link>
+                 <Link href="/collaborate" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   👥 Collaborate
+                 </Link>
+               </div>
+             )}
+           </div>
 
           {/* Analytics Section - Collapsible */}
           <div>
@@ -450,43 +486,49 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Advanced Section - Collapsible */}
-          <div>
-            <button 
-              onClick={() => toggleMenu("advanced")}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
-            >
-              <span className="flex items-center gap-3">
-                <FileCodeIcon className="h-4 w-4" /> Advanced
-              </span>
-              <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("advanced") ? "rotate-180" : ""}`} />
-            </button>
-            {isMenuOpen("advanced") && (
-              <div className="ml-4 mt-1 space-y-1">
-                <Link href="/github-action" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  GitHub Action
-                </Link>
-                <Link href="/webhooks" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Webhooks
-                </Link>
-                <Link href="/language" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Languages
-                </Link>
-                <Link href="/privacy" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Privacy
-                </Link>
-                <Link href="/auto-tag" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Auto Version
-                </Link>
-              </div>
-            )}
-          </div>
+           {/* Advanced Section - Collapsible */}
+           <div>
+             <button 
+               onClick={() => toggleMenu("advanced")}
+               className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+             >
+               <span className="flex items-center gap-3">
+                 <FileCodeIcon className="h-4 w-4" /> Advanced
+               </span>
+               <ChevronDownIcon className={`h-4 w-4 transition-transform ${isMenuOpen("advanced") ? "rotate-180" : ""}`} />
+             </button>
+             {isMenuOpen("advanced") && (
+               <div className="ml-4 mt-1 space-y-1">
+                 <Link href="/github-action" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   GitHub Action
+                 </Link>
+                 <Link href="/webhooks" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Webhooks
+                 </Link>
+                 <Link href="/language" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   🌐 Languages
+                 </Link>
+                 <Link href="/privacy" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   Privacy
+                 </Link>
+                 <Link href="/drag-drop" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   🖱️ Drag & Drop
+                 </Link>
+                 <Link href="/templates" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   📝 Templates
+                 </Link>
+                 <Link href="/import" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                   📥 Import
+                 </Link>
+               </div>
+             )}
+           </div>
 
-          {/* Analytics */}
-          <Link href="/analytics" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-            <BarChart3Icon className="h-4 w-4" /> Analytics
-          </Link>
-        </nav>
+           {/* Pricing */}
+           <Link href="/pricing" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+             <CrownIcon className="h-4 w-4" /> Pricing
+           </Link>
+         </nav>
 
         {/* Recent Activity */}
         {recentActivity.length > 0 && (
