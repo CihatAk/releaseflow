@@ -38,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton, CardSkeleton, RepoListSkeleton, ChangelogSkeleton, DashboardSkeleton } from "@/components/ui/skeleton";
 import { OnboardingTour, useOnboarding } from "@/components/onboarding";
 import FeedbackButton from "@/components/feedback-button";
+import AIChatBot, { AIChatBotTrigger } from "@/components/ai-chat-bot";
 
 interface Repo {
   id: number;
@@ -65,6 +66,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<{ login: string; avatar_url: string } | null>(null);
   const { hasCompletedOnboarding, completeOnboarding } = useOnboarding();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showAIBot, setShowAIBot] = useState(false);
   
   // New features state
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -770,7 +772,11 @@ export default function DashboardPage() {
       {/* Onboarding */}
       {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
 
-      <FeedbackButton />
-    </div>
-  );
+       <FeedbackButton />
+
+       {/* AI Chat Bot */}
+       {showAIBot && <AIChatBot isOpen={showAIBot} onClose={() => setShowAIBot(false)} />}
+       <AIChatBotTrigger onClick={() => setShowAIBot(true)} />
+     </div>
+   );
 }
