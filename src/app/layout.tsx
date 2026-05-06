@@ -4,6 +4,7 @@ import "./globals.css";
 import { Analytics } from "./components/analytics";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import ChatBotWrapper from "@/components/chat-bot-wrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +33,6 @@ export const metadata: Metadata = {
     "auto changelog",
   ],
   authors: [{ name: "ReleaseFlow" }],
-  creator: "ReleaseFlow",
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -77,7 +77,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html className="scroll-smooth" suppressHydrationWarning>
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/favicon.svg" />
@@ -94,6 +94,7 @@ export default function RootLayout({
           {children}
           <Analytics />
           <Toaster />
+          <ChatBotWrapper />
         </ThemeProvider>
       </body>
     </html>

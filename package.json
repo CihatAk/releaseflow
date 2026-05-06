@@ -7,10 +7,9 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
     "cli": "node cli.js",
@@ -30,6 +29,7 @@
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-toast": "^1.2.15",
     "@sentry/nextjs": "^10.50.0",
     "@supabase/ssr": "^0.10.2",
@@ -47,6 +47,9 @@
     "prisma": "^5.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^16.1.1",
+    "remark-gfm": "^4.0.1",
     "stripe": "^22.0.2",
     "tailwind-merge": "^3.5.0"
   },
@@ -56,6 +59,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "happy-dom": "^16.6.0",

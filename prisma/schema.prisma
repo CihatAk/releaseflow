@@ -25,6 +25,7 @@ model User {
   aiKeys     UserAiKey[]
   settings   Settings?
   Analytics  Analytics[]
+  chatConversations ChatConversation[] // Chat konuşmaları
 
   @@index([github_id])
   @@index([username])
@@ -152,5 +153,34 @@ model Analytics {
   @@index([event])
   @@index([userId])
   @@index([repoId])
+  @@index([created_at])
+}
+
+model ChatConversation {
+  id          String    @id @default(cuid())
+  user_id      String
+  user         User      @relation(fields: [user_id], references: [id])
+  title        String    @default("New Conversation")
+  messages     ChatMessage[]
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  @@index([user_id])
+  @@index([created_at])
+  @@index([updated_at])
+}
+
+model ChatMessage {
+  id              String   @id @default(cuid())
+  conversation_id String
+  conversation    ChatConversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  role            String   // 'user' | 'assistant' | 'system'
+  content         String
+  model           String?  // AI model used
+  tokens_used     Int?
+  latency_ms      Int?
+  created_at      DateTime @default(now())
+
+  @@index([conversation_id])
   @@index([created_at])
 }

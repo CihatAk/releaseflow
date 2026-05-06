@@ -1,15 +1,35 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { getActiveProviderConfig } from "@/lib/ai-providers";
+import { createServerClient } from "@/lib/supabase/client";
+import { AI_PROVIDERS } from "@/lib/ai-providers";
+
+function formatTime(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 interface Message {
-  role: "user" | "assistant";
+  id: string;
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: number;
-  isTyping?: boolean;
+  isStreaming?: boolean;
+  model?: string;
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  updated_at: string;
 }
 
 interface AIChatBotProps {
@@ -17,85 +37,175 @@ interface AIChatBotProps {
   onClose: () => void;
 }
 
-const QUICK_ACTIONS = [
-  { label: "🚀 Dashboard", action: () => window.location.href = "/dashboard" },
-  { label: "⚙️ Settings", action: () => window.location.href = "/settings" },
-  { label: "🤖 AI Studio", action: () => window.location.href = "/ai-studio" },
-  { label: "📊 Generate", action: () => window.location.href = "/quick" },
-  { label: "🔑 GitHub Token", action: () => window.location.href = "/settings" },
-  { label: "📈 Analytics", action: () => window.location.href = "/analytics" },
-];
-
 const SUGGESTED_QUESTIONS = [
   "Nasıl changelog oluştururum?",
   "AI Studio nedir ve nasıl kullanılır?",
   "GitHub Token nasıl eklerim?",
-  "Sidebar'daki özellikler nelerdir?",
   "Embed widget nasıl oluştururum?",
   "Otomatik versiyon nasıl belirlenir?",
+  "Batch işlemi nedir?",
+];
+
+const QUICK_ACTIONS = [
+  { emoji: "🚀", label: "Dashboard", path: "/dashboard" },
+  { emoji: "⚙️", label: "Settings", path: "/settings" },
+  { emoji: "🤖", label: "AI Studio", path: "/ai-studio" },
+  { emoji: "📊", label: "Analytics", path: "/analytics" },
+  { emoji: "📝", label: "Quick Gen", path: "/quick" },
+  { emoji: "🔑", label: "GitHub", path: "/settings" },
+];
+
+const MODELS = [
+  { id: "gpt-5.4", name: "GPT-5.4", provider: "openai" },
+  { id: "gpt-5.5", name: "GPT-5.5", provider: "openai" },
+  { id: "gpt-4o", name: "GPT-4o", provider: "openai" },
+  { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "anthropic" },
+  { id: "llama-3.3-70b-versatile", name: "LLaMA 3.3 70B", provider: "groq" },
 ];
 
 export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "👋 Merhaba! Ben ReleaseFlow AI Asistanıyım.\n\nProje hakkında her şeyi biliyorum ve size yardım edebilirim:\n\n• 📝 Changelog oluşturma ve düzenleme\n• 🤖 AI Studio kullanımı (Rewrite, Translate, Social)\n• ⚙️ Ayarlar ve API key yapılandırması\n• 📊 Versiyon takibi ve otomatik etiketleme\n• 🎨 Sürükle-bırak editor ile düzenleme\n• 📈 Analitik ve raporlama\n\nHangi konuda yardıma ihtiyacınız var?",
-      timestamp: Date.now(),
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
+  const [showModelSelect, setShowModelSelect] = useState(false);
+  const [suggestedFollowUps, setSuggestedFollowUps] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState("");
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    scrollToBottom();
+    setCurrentPage(window.location.pathname);
+  }, []);
+
+  useEffect(() => {
+    const supabase = createServerClient();
+    if (supabase) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) setUserId(user.id);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (userId && isOpen) {
+      fetchConversations();
+      if (!activeConversation) {
+        setMessages([
+          {
+            id: "welcome",
+            role: "assistant",
+            content: "👋 **Merhaba!** Ben ReleaseFlow AI Asistanıyım.\n\nProje hakkında her şeyi biliyorum ve size yardım edebilirim:\n\n• 📝 Changelog oluşturma ve düzenleme\n• 🤖 AI Studio kullanımı (Rewrite, Translate, Social)\n• ⚙️ Ayarlar ve API key yapılandırması\n• 📊 Versiyon takibi ve otomatik etiketleme\n• 🎨 Sürükle-bırak editor ile düzenleme\n• 📈 Analitik ve raporlama\n\nHangi konuda yardıma ihtiyacınız var?",
+            timestamp: Date.now(),
+          },
+        ]);
+      }
+    }
+  }, [userId, isOpen]);
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector(
+        "[data-radix-scroll-area-viewport]"
+      );
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
   }, [messages]);
 
-  const projectKnowledge = `
-RELEASEFLOW PROJE KILAVUZU:
+  const fetchConversations = useCallback(async () => {
+    if (!userId) return;
+    const supabase = createServerClient();
+    if (!supabase) return;
 
-=== ANA SAYFALAR ===
-1. /dashboard - Ana panel, repo listesi, favoriler, filtreleme
-2. /settings - GitHub Token, AI Provider API keys (OpenAI, Groq, Anthropic, Mistral, Together, OpenRouter, Perplexity, Fireworks)
-3. /ai-studio - AI özellikleri: Rewrite, Translate, Social Kit, Compare
-4. /ai-studio/rewrite - İçeriği yeniden yazma
-5. /ai-studio/translate - Çoklu dil çevirisi
-6. /ai-studio/social - Sosyal medya postları oluşturma
-7. /ai-studio/compare - Farklı AI providerları karşılaştırma
+    const { data, error } = await supabase
+      .from("chat_conversations")
+      .select("id, title, updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(20);
 
-=== ÖZELLIKLER ===
-• Generate: /quick (Hızlı), /batch (Toplu), /version (Versiyon belirleme), /changelog-history (Geçmiş), /auto-tag (Otomatik etiket)
-• Analytics: /analytics (GitHub), /trends (Trendler), /burndown (Burndown chart), /contributors (Katkıcılar)
-• Publish: /publish (GitHub Release), /publish-channels, /email-digest, /short-url, /embed
-• Automate: /watch (Repo izleme), /scheduled (Zamanlanmış), /github-action (GitHub Action), /pr-template (PR şablonu), /waitlist
-• Integrations: /webhooks, /brand (Marka), /team, /collaborate
-• Advanced: /drag-drop (Sürükle-bırak editor), /templates, /import, /language, /privacy
+    if (!error && data) {
+      setConversations(data);
+    }
+  }, [userId]);
 
-=== AI MODELLERI ===
-- OpenAI: gpt-5.5, gpt-5.4, gpt-4o, gpt-4o-mini
-- Groq: llama-3.3-70b-versatile, llama-3.1-8b-instant, mixtral-8x7b
-- Anthropic: claude-opus-4-7, claude-sonnet-4-6, claude-haiku-4-5
-- Diğer: Mistral, Together, OpenRouter, Perplexity, Fireworks
+  const loadConversation = useCallback(async (conversationId: string) => {
+    if (!userId) return;
+    const supabase = createServerClient();
+    if (!supabase) return;
 
-=== KULLANIM ===
-1. GitHub Token Ekleme: /settings → GitHub Authentication → Token ekle (ghp_ ile başlar)
-2. AI Provider Ayarla: /settings → AI Provider Settings → Provider seç → API key ekle
-3. Changelog Oluştur: /dashboard → Repo seç → Generate butonu
-4. Batch Generate: /batch → Repo seç → Generate all
-5. AI ile Düzenle: /ai-studio → Rewrite/Translate/Social → İçerik gir → Run
-6. Embed Widget: /widget → Repo seç → Tema özelleştir → Kodu kopyala
-`;
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+
+    if (!error && data) {
+      setMessages(
+        data.map((msg: { id: string; role: string; content: string; created_at: string }) => ({
+          id: msg.id,
+          role: msg.role as "user" | "assistant" | "system",
+          content: msg.content,
+          timestamp: new Date(msg.created_at).getTime(),
+        }))
+      );
+      setActiveConversation(conversationId);
+      setShowHistory(false);
+    }
+  }, [userId]);
+
+  const deleteConversation = useCallback(async (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Bu konuşmayı silmek istediğinizden emin misiniz?")) return;
+
+    const supabase = createServerClient();
+    if (!supabase) return;
+
+    const { error } = await supabase
+      .from("chat_conversations")
+      .delete()
+      .eq("id", conversationId);
+
+    if (!error) {
+      fetchConversations();
+      if (activeConversation === conversationId) {
+        setActiveConversation(null);
+        setMessages([]);
+      }
+    }
+  }, [activeConversation, fetchConversations]);
+
+  const startNewConversation = useCallback(() => {
+    setActiveConversation(null);
+    setMessages([
+      {
+        id: "welcome",
+        role: "assistant",
+        content: "👋 **Merhaba!** Ben ReleaseFlow AI Asistanıyım.\n\nYeni bir konuşma başlattık. Size nasıl yardımcı olabilirim?",
+        timestamp: Date.now(),
+      },
+    ]);
+    setShowHistory(false);
+  }, []);
 
   const handleSend = async (text?: string) => {
     const messageText = text || input;
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || loading) return;
 
     const userMessage: Message = {
+      id: `user-${Date.now()}`,
       role: "user",
       content: messageText,
       timestamp: Date.now(),
@@ -106,92 +216,128 @@ RELEASEFLOW PROJE KILAVUZU:
     setLoading(true);
     setIsTyping(true);
 
+    const assistantMessageId = `assistant-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantMessageId,
+        role: "assistant" as const,
+        content: "",
+        timestamp: Date.now(),
+        isStreaming: true,
+      },
+    ]);
+
     try {
       const config = getActiveProviderConfig();
-      
-      const conversationHistory = messages
-        .slice(-6)
-        .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
-        .join("\n\n");
+      const body: {
+        message: string;
+        conversationId?: string;
+        stream: boolean;
+        aiConfig?: { provider?: string; apiKey?: string; model?: string };
+      } = {
+        message: messageText,
+        stream: true,
+      };
 
-      const prompt = `Sen ReleaseFlow projesinin uzman AI asistanısın. Aşağıdaki kapsamlı proje bilgilerini kullanarak kullanıcıya yardım et.
-
-${projectKnowledge}
-
-=== ÖNCEKI KONUŞMA ===
-${conversationHistory}
-
-=== KULLANICI SORUSU ===
-${messageText}
-
-=== KURALLAR ===
-1. Kısa, öz ve açıklayıcı cevaplar ver (maksimum 150 kelime)
-2. Kod örnekleri ver (örneğin: /settings?tab=ai)
-3. URL'leri tam olarak göster (örneğin: https://releaseflow.dev/settings)
-4. Türkçe konuş
-5. Eğer kullanıcı bir sayfa isterse, CEVAPTA "SAYFA:yol" formatını kullan (örnek: "SAYFA:/settings")
-6. Eğer bir özellik hakkında soru sorulursa, nasıl kullanılacağını adım adım açıkla
-7. Kod bloklarını \`\`\` kod\`\`\` formatında ver
-8. Emoji kullan (😊, ✅, 📝, 🤖 gibi)
-9. Eğer kullanıcı "merhaba", "selam" derse, kendini tanıt ve neler yapabileceğini listele
-10. "Teşekkürler" derse, "Rica ederim! Başka bir sorun olursa buradayım 😊" de
-
-Şimdi kullanıcıya yardım et:`;
+      if (activeConversation) {
+        body.conversationId = activeConversation;
+      }
 
       if (config) {
-        const response = await fetch("/api/ai/rewrite", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: prompt,
-            tone: "professional",
-            audience: "developers",
-            length: "concise",
-            format: "plain",
-            aiConfig: { provider: config.provider.id, apiKey: config.apiKey, model: config.model }
-          }),
-        });
+        body.aiConfig = {
+          provider: config.provider.id,
+          apiKey: config.apiKey,
+          model: config.model,
+        };
+      }
 
-        const data = await response.json();
-        let botResponse = data.rewrittenContent || data.releaseNotes || "Üzgünüm, şu anda yardım edemiyorum.";
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
 
-        // Check for page navigation
-        const pageMatch = botResponse.match(/SAYFA:(\/[a-z0-9/_\-]*)/i);
-        if (pageMatch) {
-          const pagePath = pageMatch[1];
-          botResponse = botResponse.replace(/SAYFA:[^\s]*/, "").trim();
-          setMessages((prev) => [...prev, {
-            role: "assistant",
-            content: botResponse,
-            timestamp: Date.now(),
-          }]);
-          setTimeout(() => {
-            window.location.href = pagePath;
-          }, 1500);
-        } else {
-          setMessages((prev) => [...prev, {
-            role: "assistant",
-            content: botResponse,
-            timestamp: Date.now(),
-          }]);
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: abortController.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error("API request failed");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+      let conversationId = activeConversation;
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.content) {
+                  fullContent += data.content;
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? { ...msg, content: fullContent }
+                        : msg
+                    )
+                  );
+                }
+                if (data.conversationId) {
+                  conversationId = data.conversationId;
+                  if (!activeConversation) {
+                    setActiveConversation(data.conversationId);
+                    fetchConversations();
+                  }
+                }
+                if (data.done) {
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? { ...msg, isStreaming: false }
+                        : msg
+                    )
+                  );
+                }
+                if (data.error) {
+                  throw new Error(data.error);
+                }
+              } catch {
+                // Ignore parse errors for incomplete chunks
+              }
+            }
+          }
         }
-      } else {
-        setMessages((prev) => [...prev, {
-          role: "assistant",
-          content: "⚠️ Lütfen önce /settings sayfasından bir AI provider yapılandırın.\n\nAPI key ekledikten sonra tekrar sorabilirsiniz.",
-          timestamp: Date.now(),
-        }]);
       }
     } catch (err) {
-      setMessages((prev) => [...prev, {
-        role: "assistant",
-        content: "❌ Bir hata oluştu. Lütfen tekrar deneyin veya /settings sayfasını kontrol edin.",
-        timestamp: Date.now(),
-      }]);
-    }
+      if (err instanceof Error && err.name === "AbortError") return;
 
-    setLoading(false);
-    setIsTyping(false);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMessageId
+            ? {
+                ...msg,
+                content: "❌ Bir hata oluştu. Lütfen tekrar deneyin veya /settings sayfasını kontrol edin.",
+                isStreaming: false,
+              }
+            : msg
+        )
+      );
+    } finally {
+      setLoading(false);
+      setIsTyping(false);
+      abortControllerRef.current = null;
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -201,52 +347,192 @@ ${messageText}
     }
   };
 
-  const handleQuickAction = (action: () => void, label: string) => {
-    action();
+  const handlePageNavigation = (content: string) => {
+    const pageMatch = content.match(/SAYFA:(\/[a-z0-9/_\-]*)/i);
+    if (pageMatch) {
+      const pagePath = pageMatch[1];
+      setTimeout(() => {
+        window.location.href = pagePath;
+      }, 1500);
+      return content.replace(/SAYFA:[^\s]*/, "").trim();
+    }
+    return content;
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[420px] max-h-[700px] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slide-up">
+    <div className="fixed bottom-4 right-4 z-50 w-[450px] max-h-[85vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slide-up">
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl">
+          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl animate-pulse">
             🤖
           </div>
           <div>
             <h3 className="font-bold text-sm">ReleaseFlow AI Asistanı</h3>
-            <p className="text-xs opacity-80">Proje uzmanı • Çevrimiçi</p>
+            <p className="text-xs opacity-80 flex items-center gap-1">
+              {isTyping ? (
+                <>
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                  Yazıyor...
+                </>
+              ) : (
+                <>
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+                  Proje uzmanı • Çevrimiçi
+                </>
+              )}
+            </p>
           </div>
         </div>
-        <button onClick={onClose} className="hover:bg-white/20 p-2 rounded-lg transition-colors">
-          <span className="text-xl">×</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {activeConversation && (
+            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+              {conversations.find(c => c.id === activeConversation)?.title?.substring(0, 15) || "Yeni"}
+            </span>
+          )}
+          <div className="relative">
+            <button
+              onClick={() => setShowModelSelect(!showModelSelect)}
+              className="hover:bg-white/20 p-2 rounded-lg transition-colors text-xs"
+              title="Model Seç"
+            >
+              {MODELS.find(m => m.id === selectedModel)?.name || "Model"}
+            </button>
+            {showModelSelect && (
+              <div className="absolute right-0 top-10 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[180px] z-20">
+                {MODELS.map((model) => (
+                  <button
+                    key={model.id}
+                    onClick={() => {
+                      setSelectedModel(model.id);
+                      setShowModelSelect(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-xs hover:bg-gray-50 transition-colors ${
+                      selectedModel === model.id ? "bg-blue-50 text-blue-600" : "text-gray-700"
+                    }`}
+                  >
+                    <span className="font-medium">{model.name}</span>
+                    <span className="text-gray-400 ml-1">({model.provider})</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="hover:bg-white/20 p-2 rounded-lg transition-colors relative"
+            title="Konuşma Geçmişi"
+          >
+            <span className="text-lg">📚</span>
+            {conversations.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {conversations.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={startNewConversation}
+            className="hover:bg-white/20 p-2 rounded-lg transition-colors"
+            title="Yeni Konuşma"
+          >
+            <span className="text-lg">✏️</span>
+          </button>
+          <button
+            onClick={onClose}
+            className="hover:bg-white/20 p-2 rounded-lg transition-colors"
+          >
+            <span className="text-xl">×</span>
+          </button>
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="px-4 py-2 border-b bg-gray-50 flex flex-wrap gap-2">
-        {QUICK_ACTIONS.slice(0, 4).map((action, idx) => (
-          <button
-            key={idx}
-            onClick={() => handleQuickAction(action.action, action.label)}
-            className="px-3 py-1 bg-white hover:bg-gray-100 border border-gray-200 rounded-full text-xs font-medium transition-colors"
-          >
-            {action.label}
-          </button>
-        ))}
-      </div>
+      {/* History Sidebar */}
+      {showHistory && (
+        <div className="absolute top-16 right-0 w-full h-[calc(100%-4rem)] bg-white z-10 border-b border-gray-200 flex flex-col">
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-sm text-gray-700">
+                Konuşma Geçmişi
+              </h4>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <Input
+              type="text"
+              placeholder="Konuşma ara..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full text-sm"
+            />
+          </div>
+          <ScrollArea className="flex-1" ref={scrollAreaRef}>
+            <div className="p-2 space-y-1">
+              {conversations.filter(c => 
+                c.title.toLowerCase().includes(searchQuery.toLowerCase())
+              ).length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-8">
+                  {searchQuery ? "Sonuç bulunamadı" : "Henüz konuşma geçmişi yok"}
+                </p>
+              ) : (
+                conversations
+                  .filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map((conv) => (
+                  <div
+                    key={conv.id}
+                    onClick={() => loadConversation(conv.id)}
+                    className={`p-3 rounded-lg cursor-pointer transition-colors text-sm ${
+                      activeConversation === conv.id
+                        ? "bg-blue-50 border border-blue-200"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="truncate flex-1 font-medium text-gray-700">
+                        {conv.title}
+                      </span>
+                      <button
+                        onClick={(e) => deleteConversation(conv.id, e)}
+                        className="ml-2 text-gray-400 hover:text-red-500 transition-colors"
+                        title="Sil"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(conv.updated_at).toLocaleDateString("tr-TR")} • {new Date(conv.updated_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+          <div className="p-3 border-t">
+            <Button
+              onClick={startNewConversation}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-sm"
+              size="sm"
+            >
+              + Yeni Konuşma
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[420px]">
-        {messages.map((msg, idx) => (
+      <ScrollArea className="flex-1 p-4 space-y-4" ref={scrollAreaRef}>
+        {messages.map((msg) => (
           <div
-            key={idx}
+            key={msg.id}
             className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             {msg.role === "assistant" && (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0 text-sm">
                 🤖
               </div>
             )}
@@ -257,9 +543,66 @@ ${messageText}
                   : "bg-gray-100 text-gray-800 rounded-bl-md"
               }`}
             >
-              <p className="whitespace-pre-wrap">{msg.content}</p>
-              <p className={`text-xs mt-2 ${msg.role === "user" ? "text-blue-100" : "text-gray-500"}`}>
-                {new Date(msg.timestamp).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+              {msg.role === "assistant" ? (
+                <div className="prose prose-sm max-w-none prose-p:my-1 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({ className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || "");
+                        return match ? (
+                          <pre className="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto text-sm my-2">
+                            <code className={className} {...props}>
+                              {String(children).replace(/\n$/, "")}
+                            </code>
+                          </pre>
+                        ) : (
+                          <code className="bg-gray-200 px-1.5 py-0.5 rounded text-sm" {...props}>
+                            {children}
+                          </code>
+                        );
+                      },
+                    }}
+                  >
+                    {handlePageNavigation(msg.content)}
+                  </ReactMarkdown>
+                  {msg.isStreaming && (
+                    <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-1" />
+                  )}
+                  {!msg.isStreaming && msg.content && (
+                    <div className="flex gap-2 mt-2 pt-2 border-t border-gray-200">
+                      <button
+                        onClick={() => navigator.clipboard.writeText(msg.content)}
+                        className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                        title="Kopyala"
+                      >
+                        📋 Kopyala
+                      </button>
+                      {loading && msg.id === messages[messages.length - 1]?.id && (
+                        <button
+                          onClick={() => {
+                            abortControllerRef.current?.abort();
+                            setLoading(false);
+                            setIsTyping(false);
+                          }}
+                          className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                          title="Durdur"
+                        >
+                          ⏹ Durdur
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              )}
+              <p
+                className={`text-xs mt-2 ${
+                  msg.role === "user" ? "text-blue-100" : "text-gray-500"
+                }`}
+              >
+                {formatTime(msg.timestamp)}
               </p>
             </div>
             {msg.role === "user" && (
@@ -270,41 +613,70 @@ ${messageText}
           </div>
         ))}
 
-        {isTyping && (
+        {isTyping && !messages.some((m) => m.isStreaming) && (
           <div className="flex gap-3 justify-start">
             <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
               🤖
             </div>
             <div className="bg-gray-100 p-4 rounded-2xl rounded-bl-md">
               <div className="flex gap-1">
-                <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                <span
+                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+                  style={{ animationDelay: "0ms" }}
+                />
+                <span
+                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+                  style={{ animationDelay: "150ms" }}
+                />
+                <span
+                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+                  style={{ animationDelay: "300ms" }}
+                />
               </div>
             </div>
           </div>
         )}
 
         <div ref={messagesEndRef} />
-      </div>
+      </ScrollArea>
 
-      {/* Suggested Questions */}
-      {messages.length <= 2 && (
-        <div className="px-4 pb-2">
-          <p className="text-xs text-gray-500 mb-2">Önerilen sorular:</p>
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTED_QUESTIONS.slice(0, 3).map((question, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSend(question)}
-                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs transition-colors text-left"
-              >
-                {question}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+       {/* Suggested Questions */}
+       {messages.length <= 1 && (
+         <div className="px-4 pb-2">
+           <p className="text-xs text-gray-500 mb-2">Önerilen sorular:</p>
+           <div className="flex flex-wrap gap-2">
+              {SUGGESTED_QUESTIONS.map((question, idx) => (
+               <button
+                 key={idx}
+                 onClick={() => handleSend(question)}
+                 className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs transition-colors text-left"
+                 disabled={loading}
+               >
+                 {question}
+               </button>
+             ))}
+           </div>
+         </div>
+       )}
+
+       {/* Suggested Follow-ups */}
+       {suggestedFollowUps.length > 0 && messages.length > 1 && (
+         <div className="px-4 pb-2">
+           <p className="text-xs text-gray-500 mb-2">Takip soruları:</p>
+           <div className="flex flex-wrap gap-2">
+             {suggestedFollowUps.map((question, idx) => (
+               <button
+                 key={idx}
+                 onClick={() => handleSend(question)}
+                 className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs transition-colors"
+                 disabled={loading}
+               >
+                 {question}
+               </button>
+             ))}
+           </div>
+         </div>
+       )}
 
       {/* Input */}
       <div className="p-4 border-t bg-gray-50">
@@ -317,9 +689,9 @@ ${messageText}
             className="flex-1 text-sm border-gray-300 focus:border-blue-500"
             disabled={loading}
           />
-          <Button 
-            onClick={() => handleSend()} 
-            disabled={loading || !input.trim()} 
+          <Button
+            onClick={() => handleSend()}
+            disabled={loading || !input.trim()}
             size="sm"
             className="bg-blue-600 hover:bg-blue-700"
           >
@@ -327,7 +699,7 @@ ${messageText}
           </Button>
         </div>
         <p className="text-xs text-gray-400 mt-2 text-center">
-          ReleaseFlow AI Asistanı • Proje hakkında her şeyi bilir • GPT-5.5
+          ReleaseFlow AI Asistanı • Streaming destekli • Markdown + Code Highlight
         </p>
       </div>
     </div>
@@ -336,7 +708,7 @@ ${messageText}
 
 export function AIChatBotTrigger({ onClick }: { onClick: () => void }) {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   return (
     <button
       onClick={onClick}
@@ -347,12 +719,14 @@ export function AIChatBotTrigger({ onClick }: { onClick: () => void }) {
     >
       <div className="relative">
         <span className="text-2xl">🤖</span>
-        <div className={`absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white ${isHovered ? "animate-ping" : ""}`}></div>
+        <div
+          className={`absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white ${isHovered ? "animate-ping" : ""}`}
+        />
       </div>
       {isHovered && (
         <div className="absolute right-20 bg-gray-900 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap animate-fade-in">
           AI Asistanı
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />
         </div>
       )}
     </button>
