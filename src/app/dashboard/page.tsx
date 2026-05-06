@@ -772,11 +772,11 @@ export default function DashboardPage() {
       {/* Onboarding */}
       {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
 
-       <FeedbackButton />
+      {/* AI Chat Bot */}
+      <AIChatBotTrigger onClick={() => setShowAIBot(true)} />
+      {showAIBot && <AIChatBot isOpen={showAIBot} onClose={() => setShowAIBot(false)} />}
 
-       {/* AI Chat Bot */}
-       {showAIBot && <AIChatBot isOpen={showAIBot} onClose={() => setShowAIBot(false)} />}
-       <AIChatBotTrigger onClick={() => setShowAIBot(true)} />
-     </div>
-   );
+      <FeedbackButton />
+    </div>
+  );
 }

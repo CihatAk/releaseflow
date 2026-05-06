@@ -342,11 +342,11 @@ export function AIChatBotTrigger({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="fixed bottom-4 right-4 z-40 w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 group"
+      className="fixed bottom-20 right-4 z-40 w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 group"
       title="ReleaseFlow AI Asistanı"
     >
       <div className="relative">
-        <span className="text-3xl">🤖</span>
+        <span className="text-2xl">🤖</span>
         <div className={`absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white ${isHovered ? "animate-ping" : ""}`}></div>
       </div>
       {isHovered && (
