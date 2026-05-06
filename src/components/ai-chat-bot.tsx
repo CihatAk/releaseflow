@@ -72,7 +72,6 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [showModelSelect, setShowModelSelect] = useState(false);
   const [suggestedFollowUps, setSuggestedFollowUps] = useState<string[]>([]);
