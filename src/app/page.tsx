@@ -137,7 +137,7 @@ export default function Home() {
 📦 Generating changelog...`}</pre>
               <div className="mt-4 rounded-lg bg-[#161b22] p-4 text-gray-300 font-mono">
                 <p className="text-gray-500 text-xs mb-2"># CHANGELOG.md</p>
-                <p className="text-white font-semibold mb-2">## [2.1.0] - 2026-04-23</p>
+                <p className="text-purple-400 font-semibold mb-2">## [2.1.0] - 2026-04-23</p>
                 <p className="text-purple-400 mb-2">### 🚀 Features</p>
                 <p className="ml-4 text-gray-400">• <span className="text-blue-400">auth:</span> Add OAuth2 login with GitHub</p>
                 <p className="ml-4 text-gray-400">• <span className="text-blue-400">dashboard:</span> Create repository list view</p>

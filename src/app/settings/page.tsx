@@ -412,10 +412,10 @@ export default function SettingsPage() {
                   Active Provider
                 </label>
                 <select
-                  value={aiSettings.activeProvider}
-                  onChange={(e) => setActiveProvider(e.target.value as AIProvider)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                >
+                   value={aiSettings.activeProvider}
+                   onChange={(e) => setActiveProvider(e.target.value as AIProvider)}
+                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                 >
                   {Object.values(AI_PROVIDERS).map((provider) => (
                     <option key={provider.id} value={provider.id}>
                       {provider.name} - {provider.description}
@@ -486,11 +486,11 @@ export default function SettingsPage() {
                         
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Model</label>
-                          <select
-                            value={providerSettings?.model || provider.defaultModel}
-                            onChange={(e) => updateAIModel(provider.id, e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
-                          >
+                           <select
+                             value={providerSettings?.model || provider.defaultModel}
+                             onChange={(e) => updateAIModel(provider.id, e.target.value)}
+                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 bg-white"
+                           >
                             {provider.models.map((model) => (
                               <option key={model} value={model}>
                                 {model}
@@ -547,11 +547,11 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Active Provider
                 </label>
-                <select
-                  value={settings.aiActiveProvider}
-                  onChange={(e) => updateSetting("aiActiveProvider", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                >
+                       <select
+                         value={settings.aiActiveProvider}
+                         onChange={(e) => updateSetting("aiActiveProvider", e.target.value)}
+                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                       >
                   {Object.values(AI_PROVIDERS).map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -626,11 +626,11 @@ export default function SettingsPage() {
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">Model</label>
                           {provider.models ? (
-                            <select
-                              value={cfg.model || provider.defaultModel}
-                              onChange={(e) => updateAIProvider(provider.id, { model: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                            >
+                               <select
+                                 value={cfg.model || provider.defaultModel}
+                                 onChange={(e) => updateAIProvider(provider.id, { model: e.target.value })}
+                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
+                               >
                               {provider.models.map((m) => (
                                 <option key={m} value={m}>
                                   {m}
@@ -725,11 +725,11 @@ export default function SettingsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Default Format
                   </label>
-                  <select
-                    value={settings.defaultFormat}
-                    onChange={(e) => updateSetting("defaultFormat", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  >
+                <select
+                   value={settings.defaultDays}
+                   onChange={(e) => updateSetting("defaultDays", Number(e.target.value))}
+                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                 >
                     <option value="default">Default</option>
                     <option value="keepachangelog">Keep a Changelog</option>
                     <option value="standardversion">Standard Version</option>

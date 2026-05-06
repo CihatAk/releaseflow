@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
@@ -58,6 +58,7 @@ type SortBy = "name" | "updated" | "stars";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -76,6 +77,7 @@ export default function DashboardPage() {
   const [darkMode, setDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [recentActivity, setRecentActivity] = useState<{ repo: string; time: string }[]>([]);
+  const [sidebarSearch, setSidebarSearch] = useState("");
   
   // Collapsible menu state
   const [openMenus, setOpenMenus] = useState<string[]>(["generate"]);
@@ -245,12 +247,24 @@ export default function DashboardPage() {
         </div>
 
         <nav className="space-y-1 p-4">
+          {/* Sidebar Search */}
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search menu..."
+              value={sidebarSearch}
+              onChange={(e) => setSidebarSearch(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-background text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+
           {/* Main Dashboard */}
           <Link href="/dashboard" className="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium">
             <LayoutGridIcon className="h-4 w-4" /> Dashboard
           </Link>
 
           {/* Analytics Section - Collapsible */}
+          {(sidebarSearch === "" || "analytics github trends burndown contributors".includes(sidebarSearch.toLowerCase())) && (
           <div>
             <button 
               onClick={() => toggleMenu("analytics")}
@@ -263,23 +277,31 @@ export default function DashboardPage() {
             </button>
             {isMenuOpen("analytics") && (
               <div className="ml-4 mt-1 space-y-1">
-                <Link href="/analytics" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  📊 GitHub Analytics
-                </Link>
-                <Link href="/trends" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  📈 Trends
-                </Link>
-                <Link href="/burndown" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  🔥 Burndown
-                </Link>
-                <Link href="/contributors" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  👥 Contributors
-                </Link>
-              </div>
+                <Link href="/analytics" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/analytics" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   GitHub Analytics
+                 </Link>
+                 {(sidebarSearch === "" || "trends".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/trends" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/trends" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                    Trends
+                  </Link>
+                 )}
+                  {(sidebarSearch === "" || "burndown".includes(sidebarSearch.toLowerCase())) && (
+                  <Link href="/burndown" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/burndown" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                    Burndown
+                  </Link>
+                  )}
+                  {(sidebarSearch === "" || "contributors".includes(sidebarSearch.toLowerCase())) && (
+                  <Link href="/contributors" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/contributors" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                    Contributors
+                  </Link>
+                  )}
+               </div>
             )}
           </div>
+          )}
 
           {/* Generate Section - Collapsible */}
+          {(sidebarSearch === "" || "generate batch quick version history auto tag".includes(sidebarSearch.toLowerCase())) && (
           <div>
             <button 
               onClick={() => toggleMenu("generate")}
@@ -292,26 +314,38 @@ export default function DashboardPage() {
             </button>
             {isMenuOpen("generate") && (
               <div className="ml-4 mt-1 space-y-1">
-                <Link href="/batch" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Batch Generate
-                </Link>
-                <Link href="/quick" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Quick Generate
-                </Link>
-                <Link href="/version" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Version Detect
-                </Link>
-                <Link href="/changelog-history" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  History
-                </Link>
-                <Link href="/auto-tag" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  🏷 Auto Tag
-                </Link>
-              </div>
+                {(sidebarSearch === "" || "batch".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/batch" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/batch" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Batch Generate
+                 </Link>
+                 )}
+                 {(sidebarSearch === "" || "quick".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/quick" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/quick" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Quick Generate
+                 </Link>
+                 )}
+                 {(sidebarSearch === "" || "version".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/version" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/version" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Version Detect
+                 </Link>
+                 )}
+                 {(sidebarSearch === "" || "history".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/changelog-history" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/changelog-history" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   History
+                 </Link>
+                 )}
+                 {(sidebarSearch === "" || "auto tag".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/auto-tag" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/auto-tag" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                    Auto Tag
+                  </Link>
+                 )}
+               </div>
             )}
           </div>
+          )}
 
           {/* AI Studio Section - Collapsible */}
+          {(sidebarSearch === "" || "ai studio rewrite translate social compare".includes(sidebarSearch.toLowerCase())) && (
           <div>
             <button 
               onClick={() => toggleMenu("ai")}
@@ -324,26 +358,38 @@ export default function DashboardPage() {
             </button>
             {isMenuOpen("ai") && (
               <div className="ml-4 mt-1 space-y-1">
-                <Link href="/ai-studio" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  AI Studio
-                </Link>
-                <Link href="/ai-studio/rewrite" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Rewrite
-                </Link>
-                <Link href="/ai-studio/translate" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Translate
-                </Link>
-                <Link href="/ai-studio/social" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Social Kit
-                </Link>
-                <Link href="/ai-studio/compare" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Compare
-                </Link>
-              </div>
+                {(sidebarSearch === "" || "ai studio".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/ai-studio" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/ai-studio" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   AI Studio
+                 </Link>
+                 )}
+                 {(sidebarSearch === "" || "rewrite".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/ai-studio/rewrite" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/ai-studio/rewrite" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Rewrite
+                 </Link>
+                 )}
+                 {(sidebarSearch === "" || "translate".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/ai-studio/translate" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/ai-studio/translate" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Translate
+                 </Link>
+                 )}
+                 {(sidebarSearch === "" || "social".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/ai-studio/social" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/ai-studio/social" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Social Kit
+                 </Link>
+                 )}
+                 {(sidebarSearch === "" || "compare".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/ai-studio/compare" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/ai-studio/compare" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Compare
+                 </Link>
+                 )}
+               </div>
             )}
           </div>
+          )}
 
           {/* Compare Section - Collapsible */}
+          {(sidebarSearch === "" || "compare preview".includes(sidebarSearch.toLowerCase())) && (
           <div>
             <button 
               onClick={() => toggleMenu("compare")}
@@ -356,17 +402,23 @@ export default function DashboardPage() {
             </button>
             {isMenuOpen("compare") && (
               <div className="ml-4 mt-1 space-y-1">
-                <Link href="/compare" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                {(sidebarSearch === "" || "compare".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/compare" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/compare" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
                   Version Compare
                 </Link>
-                <Link href="/preview" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                )}
+                {(sidebarSearch === "" || "preview".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/preview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/preview" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
                   Preview
                 </Link>
+                )}
               </div>
             )}
           </div>
+          )}
 
           {/* Publish Section - Collapsible */}
+          {(sidebarSearch === "" || "publish channels email short embed".includes(sidebarSearch.toLowerCase())) && (
           <div>
             <button 
               onClick={() => toggleMenu("publish")}
@@ -379,26 +431,38 @@ export default function DashboardPage() {
             </button>
             {isMenuOpen("publish") && (
               <div className="ml-4 mt-1 space-y-1">
-                <Link href="/publish" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                {(sidebarSearch === "" || "publish".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/publish" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/publish" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
                   GitHub Release
                 </Link>
-                <Link href="/publish-channels" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                )}
+                {(sidebarSearch === "" || "channels".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/publish-channels" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/publish-channels" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
                   Channels
                 </Link>
-                <Link href="/email-digest" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  📧 Email Digest
-                </Link>
-                <Link href="/short-url" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  🔗 Short URL
-                </Link>
-                <Link href="/embed" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  📑 Embed Widget
-                </Link>
-              </div>
+                )}
+                {(sidebarSearch === "" || "email".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/email-digest" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/email-digest" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Email Digest
+                 </Link>
+                )}
+                {(sidebarSearch === "" || "short".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/short-url" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/short-url" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Short URL
+                 </Link>
+                )}
+                {(sidebarSearch === "" || "embed".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/embed" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/embed" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Embed Widget
+                 </Link>
+                )}
+             </div>
             )}
           </div>
+          )}
 
           {/* Automate Section - Collapsible */}
+          {(sidebarSearch === "" || "automate watch scheduled github action pr template waitlist".includes(sidebarSearch.toLowerCase())) && (
           <div>
             <button 
               onClick={() => toggleMenu("automate")}
@@ -411,26 +475,38 @@ export default function DashboardPage() {
             </button>
             {isMenuOpen("automate") && (
               <div className="ml-4 mt-1 space-y-1">
-                <Link href="/watch" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  Watch Repos
-                </Link>
-                <Link href="/scheduled" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  ⏰ Scheduled
-                </Link>
-                <Link href="/github-action" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  🤖 GitHub Action
-                </Link>
-                <Link href="/pr-template" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  📄 PR Template
-                </Link>
-                <Link href="/waitlist" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  ⏳ Waitlist
-                </Link>
+                {(sidebarSearch === "" || "watch".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/watch" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/watch" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                    Watch Repos
+                  </Link>
+                )}
+                {(sidebarSearch === "" || "scheduled".includes(sidebarSearch.toLowerCase())) && (
+                  <Link href="/scheduled" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/scheduled" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                    Scheduled
+                  </Link>
+                )}
+                {(sidebarSearch === "" || "github action".includes(sidebarSearch.toLowerCase())) && (
+                  <Link href="/github-action" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/github-action" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                    GitHub Action
+                  </Link>
+                )}
+                {(sidebarSearch === "" || "pr template".includes(sidebarSearch.toLowerCase())) && (
+                  <Link href="/pr-template" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/pr-template" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                    PR Template
+                  </Link>
+                )}
+                {(sidebarSearch === "" || "waitlist".includes(sidebarSearch.toLowerCase())) && (
+                  <Link href="/waitlist" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/waitlist" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                    Waitlist
+                  </Link>
+                )}
               </div>
             )}
           </div>
+          )}
 
           {/* Integrations Section - Collapsible */}
+          {(sidebarSearch === "" || "integrations webhooks branding team collaborate".includes(sidebarSearch.toLowerCase())) && (
           <div>
             <button 
               onClick={() => toggleMenu("integrations")}
@@ -443,26 +519,38 @@ export default function DashboardPage() {
             </button>
             {isMenuOpen("integrations") && (
               <div className="ml-4 mt-1 space-y-1">
-                <Link href="/integrations" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  All Integrations
-                </Link>
-                <Link href="/webhooks" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  🔗 Webhooks
-                </Link>
-                <Link href="/brand" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  🎨 Branding
-                </Link>
-                <Link href="/team" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  👥 Team
-                </Link>
-                <Link href="/collaborate" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  👥 Collaborate
-                </Link>
+                {(sidebarSearch === "" || "integrations".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/integrations" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/integrations" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   All Integrations
+                 </Link>
+                )}
+                {(sidebarSearch === "" || "webhooks".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/webhooks" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/webhooks" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Webhooks
+                 </Link>
+                )}
+                {(sidebarSearch === "" || "branding".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/brand" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/brand" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Branding
+                 </Link>
+                )}
+                {(sidebarSearch === "" || "team".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/team" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/team" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Team
+                 </Link>
+                )}
+                {(sidebarSearch === "" || "collaborate".includes(sidebarSearch.toLowerCase())) && (
+                 <Link href="/collaborate" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/collaborate" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                   Collaborate
+                 </Link>
+                )}
               </div>
             )}
           </div>
+          )}
 
           {/* Advanced Section - Collapsible */}
+          {(sidebarSearch === "" || "advanced github webhooks language privacy drag templates import".includes(sidebarSearch.toLowerCase())) && (
           <div>
             <button 
               onClick={() => toggleMenu("advanced")}
@@ -475,30 +563,45 @@ export default function DashboardPage() {
             </button>
             {isMenuOpen("advanced") && (
               <div className="ml-4 mt-1 space-y-1">
-                <Link href="/github-action" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                {(sidebarSearch === "" || "github action".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/github-action" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/github-action" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
                   GitHub Action
                 </Link>
-                <Link href="/webhooks" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                )}
+                {(sidebarSearch === "" || "webhooks".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/webhooks" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/webhooks" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
                   Webhooks
                 </Link>
-                <Link href="/language" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  🌐 Languages
+                )}
+                {(sidebarSearch === "" || "language".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/language" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/language" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                  Languages
                 </Link>
-                <Link href="/privacy" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                )}
+                {(sidebarSearch === "" || "privacy".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/privacy" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/privacy" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
                   Privacy
                 </Link>
-                <Link href="/drag-drop" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  🖱️ Drag & Drop
+                )}
+                {(sidebarSearch === "" || "drag".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/drag-drop" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/drag-drop" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                  Drag & Drop
                 </Link>
-                <Link href="/templates" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  📝 Templates
+                )}
+                {(sidebarSearch === "" || "templates".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/templates" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/templates" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                  Templates
                 </Link>
-                <Link href="/import" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
-                  📥 Import
+                )}
+                {(sidebarSearch === "" || "import".includes(sidebarSearch.toLowerCase())) && (
+                <Link href="/import" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/import" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                  Import
                 </Link>
+                )}
               </div>
             )}
           </div>
+          )}
 
           {/* Pricing */}
           <Link href="/pricing" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
@@ -574,7 +677,7 @@ export default function DashboardPage() {
                 <button onClick={() => setViewMode("list")} className={`p-2 ${viewMode === "list" ? "bg-muted" : ""}`}><ListIcon className="h-4 w-4" /></button>
               </div>
 
-              <select value={sortBy} onChange={e => setSortBy(e.target.value as SortBy)} className="rounded-lg border bg-background px-3 py-2">
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as SortBy)} className="rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2">
                 <option value="updated">Recently Updated</option>
                 <option value="name">Alphabetical</option>
                 <option value="stars">Most Stars</option>

@@ -23,13 +23,41 @@ export default function DragDropPage() {
     { id: "6", message: "refactor: clean up code", type: "refactor", sha: "pqr678" },
   ]);
   const [dragged, setDragged] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
   const moveCommit = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
     const newCommits = [...commits];
     const [moved] = newCommits.splice(fromIndex, 1);
     newCommits.splice(toIndex, 0, moved);
     setCommits(newCommits);
     setDragged(null);
+    setDragOver(null);
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDragged(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOver(index);
+  };
+
+  const handleDragEnd = () => {
+    setDragged(null);
+    setDragOver(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, toIndex: number) => {
+    e.preventDefault();
+    const fromIndex = parseInt(e.dataTransfer.getData("text/plain"));
+    if (!isNaN(fromIndex)) {
+      moveCommit(fromIndex, toIndex);
+    }
   };
 
   const moveUp = (index: number) => {
@@ -73,13 +101,18 @@ export default function DragDropPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {commits.map((commit, index) => (
-                <div
-                  key={commit.id}
-                  className={`flex items-center gap-3 p-3 bg-gray-50 rounded-lg transition-all ${
-                    dragged === index ? "opacity-50 scale-95" : "hover:bg-gray-100"
-                  }`}
+              <div className="space-y-2">
+                {commits.map((commit, index) => (
+                  <div
+                    key={commit.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    onDrop={(e) => handleDrop(e, index)}
+                    className={`flex items-center gap-3 p-3 bg-gray-50 rounded-lg transition-all ${
+                      dragged === index ? "opacity-50 scale-95" : "hover:bg-gray-100"
+                    } ${dragOver === index ? "border-2 border-blue-500 bg-blue-50" : ""}`}
                 >
                   <div className="cursor-move text-gray-400">
                     <GripIcon className="w-5 h-5" />

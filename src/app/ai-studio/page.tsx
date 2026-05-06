@@ -178,7 +178,7 @@ function Rewriter({ activeConfig }: { activeConfig: AIConfig | undefined }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-gray-600 mb-1">Tone</label>
-              <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+              <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm">
                 <option value="professional">Professional</option>
                 <option value="casual">Casual</option>
                 <option value="enthusiastic">Enthusiastic</option>
@@ -188,7 +188,7 @@ function Rewriter({ activeConfig }: { activeConfig: AIConfig | undefined }) {
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Audience</label>
-              <select value={audience} onChange={(e) => setAudience(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+              <select value={audience} onChange={(e) => setAudience(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm">
                 <option value="mixed">Mixed</option>
                 <option value="developers">Developers</option>
                 <option value="end-users">End Users</option>
@@ -197,7 +197,7 @@ function Rewriter({ activeConfig }: { activeConfig: AIConfig | undefined }) {
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Length</label>
-              <select value={length} onChange={(e) => setLength(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+              <select value={length} onChange={(e) => setLength(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm">
                 <option value="concise">Concise</option>
                 <option value="standard">Standard</option>
                 <option value="detailed">Detailed</option>
@@ -205,7 +205,7 @@ function Rewriter({ activeConfig }: { activeConfig: AIConfig | undefined }) {
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Format</label>
-              <select value={format} onChange={(e) => setFormat(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+              <select value={format} onChange={(e) => setFormat(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm">
                 <option value="markdown">Markdown</option>
                 <option value="html">HTML</option>
                 <option value="plain">Plain text</option>
@@ -823,7 +823,7 @@ function ReleaseNotes({ activeConfig }: { activeConfig: AIConfig | undefined }) 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-gray-600 mb-1">Tone</label>
-            <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+            <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm">
               <option value="professional">Professional</option>
               <option value="casual">Casual</option>
               <option value="enthusiastic">Enthusiastic</option>
@@ -832,7 +832,7 @@ function ReleaseNotes({ activeConfig }: { activeConfig: AIConfig | undefined }) 
           </div>
           <div>
             <label className="block text-xs text-gray-600 mb-1">Length</label>
-            <select value={length} onChange={(e) => setLength(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+            <select value={length} onChange={(e) => setLength(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm">
               <option value="concise">Concise</option>
               <option value="standard">Standard</option>
               <option value="detailed">Detailed</option>
@@ -900,7 +900,7 @@ function SmartSummary({ activeConfig }: { activeConfig: AIConfig | undefined }) 
         />
         <div>
           <label className="block text-xs text-gray-600 mb-1">Style</label>
-          <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+          <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm">
             <option value="bullet">Bullet Points</option>
             <option value="paragraph">Paragraph</option>
             <option value="executive">Executive</option>

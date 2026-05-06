@@ -103,7 +103,7 @@ function EmbedContent({ slug }: { slug: string }) {
       <div className={`flex min-h-screen items-center justify-center ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
         <Card className={`max-w-md ${isDark ? "bg-gray-800 border-gray-700" : ""}`}>
           <CardContent className="text-center py-12">
-            <h2 className={`mb-2 text-xl font-semibold ${isDark ? "text-white" : ""}`}>Changelog Not Found</h2>
+            <h2 className={`mb-2 text-xl font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Changelog Not Found</h2>
             <p className={`mb-4 ${isDark ? "text-gray-400" : "text-muted-foreground"}`}>
               This changelog doesn't exist or has been removed.
             </p>
@@ -126,8 +126,8 @@ function EmbedContent({ slug }: { slug: string }) {
                 className={`flex h-8 w-8 items-center justify-center rounded-lg ${isDark ? "bg-blue-600" : "bg-blue-500"}`}
                 style={bgColor}
               >
-                <svg
-                  className="h-5 w-5 text-white"
+<svg
+                   className={`h-5 w-5 ${isDark ? "text-white" : "text-blue-500"}`}
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -184,7 +184,7 @@ function EmbedContent({ slug }: { slug: string }) {
 
       <main className={`container mx-auto max-w-3xl px-4 py-12 ${isDark ? "text-gray-100" : "text-gray-900"}`}>
         <div className="mb-8">
-          <h1 className={`mb-2 text-3xl font-bold ${isDark ? "text-white" : ""}`}>
+          <h1 className={`mb-2 text-3xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
             {changelog.repo.name} Changelog
           </h1>
           <p className={isDark ? "text-gray-400" : "text-gray-600"}>
@@ -199,7 +199,7 @@ function EmbedContent({ slug }: { slug: string }) {
           {changelog.sections.map((section, idx) => (
             <Card key={idx} className={isDark ? "bg-gray-800 border-gray-700" : ""}>
               <CardHeader className={`py-4 ${isDark ? "bg-gray-750 border-b border-gray-700" : ""}`}>
-                <CardTitle className={`flex items-center gap-2 ${isDark ? "text-white" : ""}`}>
+                <CardTitle className={`flex items-center gap-2 ${isDark ? "text-white" : "text-gray-900"}`}>
                   <span className="text-2xl">{section.icon}</span>
                   {section.label}
                   <span className={`ml-2 text-sm font-normal ${isDark ? "text-gray-400" : "text-gray-500"}`}>
