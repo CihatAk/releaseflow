@@ -62,8 +62,11 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    const container = messagesContainerRef.current;
+    if (container) {
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+      });
     }
   }, [messages]);
 
