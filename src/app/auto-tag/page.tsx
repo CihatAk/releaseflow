@@ -41,24 +41,39 @@ export default function AutoTagPage() {
   const [loading, setLoading] = useState(false);
 
   const analyzeCommits = async () => {
+    if (!config.owner || !config.repo) {
+      alert("Please enter repository (owner/repo)");
+      return;
+    }
+
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    setPreview(null);
 
-    const sampleCommits = [
-      { message: "feat(auth): add OAuth2 login", type: "feat" },
-      { message: "fix(api): rate limiting", type: "fix" },
-      { message: "perf(db): optimize queries", type: "perf" },
-      { message: "docs: update readme", type: "docs" },
-    ];
+    try {
+      const response = await fetch(`/api/auto-tag?owner=${config.owner}&repo=${config.repo}&currentVersion=${config.currentVersion}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to analyze commits");
+      }
 
-    const bump = detectVersionBump(sampleCommits as any);
-    setPreview({
-      bump,
-      nextVersion: getNextVersion(config.currentVersion, bump),
-      commits: sampleCommits,
-    });
-    setConfig({ ...config, bumpType: bump });
-    setLoading(false);
+      const result = await response.json();
+      
+      if (result.success) {
+        setPreview({
+          bump: result.bump,
+          nextVersion: result.nextVersion,
+          commits: result.commits || [],
+        });
+        setConfig({ ...config, bumpType: result.bump });
+      } else {
+        throw new Error(result.error || "Analysis failed");
+      }
+    } catch (err: any) {
+      alert(err.message || "Analysis failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const executeAutoTag = async () => {

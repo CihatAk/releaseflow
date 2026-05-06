@@ -31,64 +31,20 @@ export default function BurndownPage() {
     setError("");
 
     try {
-      const token = document.cookie.split("; ").find(r => r.startsWith("github_token="))?.split("=")[1];
+      const response = await fetch(`/api/burndown?owner=${owner}&repo=${repo}&days=${days}`);
       
-      if (!token) {
-        setError("Please log in first");
-        return;
-      }
-
-      const response = await fetch("/api/github/repos", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
       if (!response.ok) {
-        throw new Error("Failed to fetch");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch burndown data");
       }
 
       const result = await response.json();
-      const targetRepo = result.repos?.find((r: any) => r.full_name === `${owner}/${repo}`);
-
-      if (!targetRepo) {
-        setError("Repository not found. Make sure you have access.");
-        return;
-      }
-
-      const commitResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/commits?since=${new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()}&per_page=100`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/vnd.github.v3+json",
-          },
-        }
-      );
-
-      if (!commitResponse.ok) {
-        throw new Error("Failed to fetch commits");
-      }
-
-      const commits = await commitResponse.json();
       
-      const commitByDate = new Map<string, number>();
-      let cumulative = 0;
-      
-      for (const commit of commits) {
-        const date = new Date(commit.commit.author.date).toISOString().split("T")[0];
-        commitByDate.set(date, (commitByDate.get(date) || 0) + 1);
+      if (!result.success) {
+        throw new Error(result.error || "Failed to fetch burndown data");
       }
 
-      const sortedDates = Array.from(commitByDate.keys()).sort();
-      const burndown: BurndownPoint[] = sortedDates.map(date => {
-        cumulative += commitByDate.get(date) || 0;
-        return {
-          date,
-          commits: commitByDate.get(date) || 0,
-          cumulative,
-        };
-      });
-
-      setData(burndown);
+      setData(result.data || []);
     } catch (err: any) {
       setError(err.message || "Failed to fetch burndown data");
     } finally {

@@ -97,7 +97,7 @@ export default function PrivacyPage() {
               <select
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as any)}
-                className="px-3 py-2 border rounded-lg"
+                className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
               >
                 <option value="exclude">Exclude</option>
                 <option value="include">Include only</option>

@@ -259,7 +259,7 @@ function Rewriter({ activeConfig }: { activeConfig: AIConfig | undefined }) {
         </CardHeader>
         <CardContent>
           {output?.content ? (
-            <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 p-4 rounded-lg max-h-[500px] overflow-auto">
+            <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-900 text-gray-100 p-4 rounded-lg max-h-[500px] overflow-auto">
               {output.content}
             </pre>
           ) : (
@@ -371,7 +371,7 @@ function Translator({ activeConfig }: { activeConfig: AIConfig | undefined }) {
               </CardHeader>
               <CardContent>
                 {r.ok ? (
-                  <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded max-h-80 overflow-auto">
+                  <pre className="whitespace-pre-wrap text-sm bg-gray-900 text-gray-100 p-3 rounded max-h-80 overflow-auto">
                     {r.content}
                   </pre>
                 ) : (
@@ -494,7 +494,7 @@ function Social({ activeConfig }: { activeConfig: AIConfig | undefined }) {
                 </CardHeader>
                 <CardContent>
                   {r.ok ? (
-                    <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded max-h-96 overflow-auto">
+                    <pre className="whitespace-pre-wrap text-sm bg-gray-900 text-gray-100 p-3 rounded max-h-96 overflow-auto">
                       {r.content}
                     </pre>
                   ) : (
@@ -664,7 +664,7 @@ function Playground() {
                 </CardHeader>
                 <CardContent>
                   {it.ok && it.result ? (
-                    <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded max-h-96 overflow-auto">
+                    <pre className="whitespace-pre-wrap text-sm bg-gray-900 text-gray-100 p-3 rounded max-h-96 overflow-auto">
                       {it.result.content}
                     </pre>
                   ) : (

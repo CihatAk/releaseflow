@@ -5,12 +5,9 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
-  PlusIcon,
-  StarIcon,
-  ExternalLinkIcon,
-  Loader2Icon,
-  RefreshIcon,
+  ArrowLeftIcon,
   SettingsIcon,
+  CrownIcon,
   LogOutIcon,
   GithubIcon,
   DownloadIcon,
@@ -31,7 +28,9 @@ import {
   ZapIcon,
   ChevronDownIcon,
   FileCodeIcon,
-  CrownIcon,
+  RefreshIcon,
+  StarIcon,
+  PlusIcon,
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -603,32 +602,37 @@ export default function DashboardPage() {
           </div>
           )}
 
+          {/* Settings */}
+          <Link href="/settings" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${pathname === "/settings" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+            <SettingsIcon className="h-4 w-4" /> Settings
+          </Link>
+
           {/* Pricing */}
           <Link href="/pricing" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
             <CrownIcon className="h-4 w-4" /> Pricing
           </Link>
         </nav>
 
-        {/* Recent Activity */}
-        {recentActivity.length > 0 && (
-          <div className="border-t p-4">
-            <h3 className="mb-3 text-xs font-semibold text-muted-foreground">RECENT</h3>
-            <div className="space-y-2">
-              {recentActivity.map((item, idx) => (
-                <Link key={idx} href={`/dashboard/${item.repo}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-                  <ClockIcon className="h-3 w-3" /> {item.repo.split("/")[1]}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Stats */}
-        <div className="absolute bottom-0 left-0 right-0 border-t p-4">
-          <div className="grid grid-cols-2 gap-2 text-center text-sm">
+        <div className="border-t p-4">
+          <div className="grid grid-cols-2 gap-2 text-center text-sm mb-4">
             <div><p className="text-2xl font-bold">{repos.length}</p><p className="text-xs text-muted-foreground">Total</p></div>
             <div><p className="text-2xl font-bold">{favorites.length}</p><p className="text-xs text-muted-foreground">Stars</p></div>
           </div>
+
+          {/* Recent Activity */}
+          {recentActivity.length > 0 && (
+            <div>
+              <h3 className="mb-3 text-xs font-semibold text-muted-foreground">RECENT</h3>
+              <div className="space-y-2">
+                {recentActivity.map((item, idx) => (
+                  <Link key={idx} href={`/dashboard/${item.repo}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                    <ClockIcon className="h-3 w-3" /> {item.repo.split("/")[1]}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 
