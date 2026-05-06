@@ -112,14 +112,9 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
     }
   }, [userId, isOpen]);
 
-  useEffect(() => {
+   useEffect(() => {
     if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
-      );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -524,7 +519,11 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
       )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4 space-y-4" ref={scrollAreaRef}>
+      <div 
+        ref={scrollAreaRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
+        style={{ maxHeight: 'calc(85vh - 220px)' }}
+      >
         {messages.map((msg) => (
           <div
             key={msg.id}
