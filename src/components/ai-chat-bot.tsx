@@ -3,11 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getActiveProviderConfig } from "@/lib/ai-providers";
-import { createServerClient } from "@/lib/supabase/client";
 import { AI_PROVIDERS } from "@/lib/ai-providers";
 
 function formatTime(timestamp: number) {
@@ -46,15 +44,6 @@ const SUGGESTED_QUESTIONS = [
   "Batch işlemi nedir?",
 ];
 
-const QUICK_ACTIONS = [
-  { emoji: "🚀", label: "Dashboard", path: "/dashboard" },
-  { emoji: "⚙️", label: "Settings", path: "/settings" },
-  { emoji: "🤖", label: "AI Studio", path: "/ai-studio" },
-  { emoji: "📊", label: "Analytics", path: "/analytics" },
-  { emoji: "📝", label: "Quick Gen", path: "/quick" },
-  { emoji: "🔑", label: "GitHub", path: "/settings" },
-];
-
 const MODELS = [
   { id: "gpt-5.4", name: "GPT-5.4", provider: "openai" },
   { id: "gpt-5.5", name: "GPT-5.5", provider: "openai" },
@@ -68,131 +57,28 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversation, setActiveConversation] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [showModelSelect, setShowModelSelect] = useState(false);
-  const [suggestedFollowUps, setSuggestedFollowUps] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState("");
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setCurrentPage(window.location.pathname);
-  }, []);
-
-  useEffect(() => {
-    const supabase = createServerClient();
-    if (supabase) {
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) setUserId(user.id);
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (userId && isOpen) {
-      fetchConversations();
-      if (!activeConversation) {
-        setMessages([
-          {
-            id: "welcome",
-            role: "assistant",
-            content: "👋 **Merhaba!** Ben ReleaseFlow AI Asistanıyım.\n\nProje hakkında her şeyi biliyorum ve size yardım edebilirim:\n\n• 📝 Changelog oluşturma ve düzenleme\n• 🤖 AI Studio kullanımı (Rewrite, Translate, Social)\n• ⚙️ Ayarlar ve API key yapılandırması\n• 📊 Versiyon takibi ve otomatik etiketleme\n• 🎨 Sürükle-bırak editor ile düzenleme\n• 📈 Analitik ve raporlama\n\nHangi konuda yardıma ihtiyacınız var?",
-            timestamp: Date.now(),
-          },
-        ]);
-      }
-    }
-  }, [userId, isOpen]);
-
-   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
-  const fetchConversations = useCallback(async () => {
-    if (!userId) return;
-    const supabase = createServerClient();
-    if (!supabase) return;
-
-    const { data, error } = await supabase
-      .from("chat_conversations")
-      .select("id, title, updated_at")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false })
-      .limit(20);
-
-    if (!error && data) {
-      setConversations(data);
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content: "👋 **Merhaba!** Ben ReleaseFlow AI Asistanı'yım.\n\nProje hakkında her şeyi biliyorum ve size yardım edebilirim:\n\n• 📝 Changelog oluşturma ve düzenleme\n• 🤖 AI Studio kullanımı (Rewrite, Translate, Social)\n• ⚙️ Ayarlar ve API key yapılandırması\n• 📊 Versiyon takibi ve otomatik etiketleme\n• 🎨 Sürükle-bırak editor ile düzenleme\n• 📈 Analitik ve raporlama\n\nHangi konuda yardıma ihtiyacınız var?",
+          timestamp: Date.now(),
+        },
+      ]);
     }
-  }, [userId]);
-
-  const loadConversation = useCallback(async (conversationId: string) => {
-    if (!userId) return;
-    const supabase = createServerClient();
-    if (!supabase) return;
-
-    const { data, error } = await supabase
-      .from("chat_messages")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
-
-    if (!error && data) {
-      setMessages(
-        data.map((msg: { id: string; role: string; content: string; created_at: string }) => ({
-          id: msg.id,
-          role: msg.role as "user" | "assistant" | "system",
-          content: msg.content,
-          timestamp: new Date(msg.created_at).getTime(),
-        }))
-      );
-      setActiveConversation(conversationId);
-      setShowHistory(false);
-    }
-  }, [userId]);
-
-  const deleteConversation = useCallback(async (conversationId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm("Bu konuşmayı silmek istediğinizden emin misiniz?")) return;
-
-    const supabase = createServerClient();
-    if (!supabase) return;
-
-    const { error } = await supabase
-      .from("chat_conversations")
-      .delete()
-      .eq("id", conversationId);
-
-    if (!error) {
-      fetchConversations();
-      if (activeConversation === conversationId) {
-        setActiveConversation(null);
-        setMessages([]);
-      }
-    }
-  }, [activeConversation, fetchConversations]);
-
-  const startNewConversation = useCallback(() => {
-    setActiveConversation(null);
-    setMessages([
-      {
-        id: "welcome",
-        role: "assistant",
-        content: "👋 **Merhaba!** Ben ReleaseFlow AI Asistanıyım.\n\nYeni bir konuşma başlattık. Size nasıl yardımcı olabilirim?",
-        timestamp: Date.now(),
-      },
-    ]);
-    setShowHistory(false);
-  }, []);
+  }, [isOpen]);
 
   const handleSend = async (text?: string) => {
     const messageText = text || input;
@@ -224,36 +110,22 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
 
     try {
       const config = getActiveProviderConfig();
-      const body: {
-        message: string;
-        conversationId?: string;
-        stream: boolean;
-        aiConfig?: { provider?: string; apiKey?: string; model?: string };
-      } = {
+      const body = {
         message: messageText,
         stream: true,
+        aiConfig: config
+          ? {
+              provider: config.provider.id,
+              apiKey: config.apiKey,
+              model: config.model,
+            }
+          : undefined,
       };
-
-      if (activeConversation) {
-        body.conversationId = activeConversation;
-      }
-
-      if (config) {
-        body.aiConfig = {
-          provider: config.provider.id,
-          apiKey: config.apiKey,
-          model: config.model,
-        };
-      }
-
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
 
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -263,7 +135,6 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let fullContent = "";
-      let conversationId = activeConversation;
 
       if (reader) {
         while (true) {
@@ -286,13 +157,6 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
                         : msg
                     )
                   );
-                }
-                if (data.conversationId) {
-                  conversationId = data.conversationId;
-                  if (!activeConversation) {
-                    setActiveConversation(data.conversationId);
-                    fetchConversations();
-                  }
                 }
                 if (data.done) {
                   setMessages((prev) =>
@@ -330,7 +194,6 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
     } finally {
       setLoading(false);
       setIsTyping(false);
-      abortControllerRef.current = null;
     }
   };
 
@@ -356,11 +219,11 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[450px] max-h-[85vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slide-up">
+    <div className="fixed bottom-4 right-4 z-50 w-[450px] max-h-[85vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl animate-pulse">
+          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl">
             🤖
           </div>
           <div>
@@ -381,11 +244,6 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {activeConversation && (
-            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-              {conversations.find(c => c.id === activeConversation)?.title?.substring(0, 15) || "Yeni"}
-            </span>
-          )}
           <div className="relative">
             <button
               onClick={() => setShowModelSelect(!showModelSelect)}
@@ -415,25 +273,6 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
             )}
           </div>
           <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="hover:bg-white/20 p-2 rounded-lg transition-colors relative"
-            title="Konuşma Geçmişi"
-          >
-            <span className="text-lg">📚</span>
-            {conversations.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                {conversations.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={startNewConversation}
-            className="hover:bg-white/20 p-2 rounded-lg transition-colors"
-            title="Yeni Konuşma"
-          >
-            <span className="text-lg">✏️</span>
-          </button>
-          <button
             onClick={onClose}
             className="hover:bg-white/20 p-2 rounded-lg transition-colors"
           >
@@ -442,239 +281,122 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
         </div>
       </div>
 
-      {/* History Sidebar */}
-      {showHistory && (
-        <div className="absolute top-16 right-0 w-full h-[calc(100%-4rem)] bg-white z-10 border-b border-gray-200 flex flex-col">
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold text-sm text-gray-700">
-                Konuşma Geçmişi
-              </h4>
-              <button
-                onClick={() => setShowHistory(false)}
-                className="text-gray-500 hover:text-gray-700"
+      {/* Messages - Scrollable area with fixed height */}
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-4"
+        style={{ height: 'calc(85vh - 180px)' }}
+      >
+        <div className="space-y-4">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              {msg.role === "assistant" && (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0 text-sm">
+                  🤖
+                </div>
+              )}
+              <div
+                className={`max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white rounded-br-md"
+                    : "bg-gray-100 text-gray-800 rounded-bl-md"
+                }`}
               >
-                ✕
-              </button>
-            </div>
-            <Input
-              type="text"
-              placeholder="Konuşma ara..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-sm"
-            />
-          </div>
-          <ScrollArea className="flex-1" ref={scrollAreaRef}>
-            <div className="p-2 space-y-1">
-              {conversations.filter(c => 
-                c.title.toLowerCase().includes(searchQuery.toLowerCase())
-              ).length === 0 ? (
-                <p className="text-center text-gray-400 text-sm py-8">
-                  {searchQuery ? "Sonuç bulunamadı" : "Henüz konuşma geçmişi yok"}
-                </p>
-              ) : (
-                conversations
-                  .filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
-                  .map((conv) => (
-                  <div
-                    key={conv.id}
-                    onClick={() => loadConversation(conv.id)}
-                    className={`p-3 rounded-lg cursor-pointer transition-colors text-sm ${
-                      activeConversation === conv.id
-                        ? "bg-blue-50 border border-blue-200"
-                        : "hover:bg-gray-50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="truncate flex-1 font-medium text-gray-700">
-                        {conv.title}
-                      </span>
-                      <button
-                        onClick={(e) => deleteConversation(conv.id, e)}
-                        className="ml-2 text-gray-400 hover:text-red-500 transition-colors"
-                        title="Sil"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(conv.updated_at).toLocaleDateString("tr-TR")} • {new Date(conv.updated_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
+                {msg.role === "assistant" ? (
+                  <div>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || "");
+                          return match ? (
+                            <pre className="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto text-sm my-2">
+                              <code className={className} {...props}>
+                                {String(children).replace(/\n$/, "")}
+                              </code>
+                            </pre>
+                          ) : (
+                            <code className="bg-gray-200 px-1.5 py-0.5 rounded text-sm" {...props}>
+                              {children}
+                            </code>
+                          );
+                        },
+                      }}
+                    >
+                      {handlePageNavigation(msg.content)}
+                    </ReactMarkdown>
+                    {msg.isStreaming && (
+                      <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-1" />
+                    )}
+                    {!msg.isStreaming && msg.content && (
+                      <div className="flex gap-2 mt-2 pt-2 border-t border-gray-200">
+                        <button
+                          onClick={() => navigator.clipboard.writeText(msg.content)}
+                          className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                          title="Kopyala"
+                        >
+                          📋 Kopyala
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ))
+                ) : (
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                )}
+                <p
+                  className={`text-xs mt-2 ${
+                    msg.role === "user" ? "text-blue-100" : "text-gray-500"
+                  }`}
+                >
+                  {formatTime(msg.timestamp)}
+                </p>
+              </div>
+              {msg.role === "user" && (
+                <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0 text-sm">
+                  👤
+                </div>
               )}
             </div>
-          </ScrollArea>
-          <div className="p-3 border-t">
-            <Button
-              onClick={startNewConversation}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-sm"
-              size="sm"
-            >
-              + Yeni Konuşma
-            </Button>
+          ))}
+
+          {isTyping && !messages.some((m) => m.isStreaming) && (
+            <div className="flex gap-3 justify-start">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                🤖
+              </div>
+              <div className="bg-gray-100 p-4 rounded-2xl rounded-bl-md">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Suggested Questions */}
+      {messages.length <= 1 && (
+        <div className="px-4 pb-2">
+          <p className="text-xs text-gray-500 mb-2">Önerilen sorular:</p>
+          <div className="flex flex-wrap gap-2">
+            {SUGGESTED_QUESTIONS.slice(0, 3).map((question, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSend(question)}
+                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs transition-colors text-left"
+                disabled={loading}
+              >
+                {question}
+              </button>
+            ))}
           </div>
         </div>
       )}
-
-      {/* Messages */}
-      <div 
-        ref={scrollAreaRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
-        style={{ maxHeight: 'calc(85vh - 220px)' }}
-      >
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {msg.role === "assistant" && (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0 text-sm">
-                🤖
-              </div>
-            )}
-            <div
-              className={`max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-blue-600 text-white rounded-br-md"
-                  : "bg-gray-100 text-gray-800 rounded-bl-md"
-              }`}
-            >
-              {msg.role === "assistant" ? (
-                <div className="prose prose-sm max-w-none prose-p:my-1 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      code({ className, children, ...props }) {
-                        const match = /language-(\w+)/.exec(className || "");
-                        return match ? (
-                          <pre className="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto text-sm my-2">
-                            <code className={className} {...props}>
-                              {String(children).replace(/\n$/, "")}
-                            </code>
-                          </pre>
-                        ) : (
-                          <code className="bg-gray-200 px-1.5 py-0.5 rounded text-sm" {...props}>
-                            {children}
-                          </code>
-                        );
-                      },
-                    }}
-                  >
-                    {handlePageNavigation(msg.content)}
-                  </ReactMarkdown>
-                  {msg.isStreaming && (
-                    <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-1" />
-                  )}
-                  {!msg.isStreaming && msg.content && (
-                    <div className="flex gap-2 mt-2 pt-2 border-t border-gray-200">
-                      <button
-                        onClick={() => navigator.clipboard.writeText(msg.content)}
-                        className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
-                        title="Kopyala"
-                      >
-                        📋 Kopyala
-                      </button>
-                      {loading && msg.id === messages[messages.length - 1]?.id && (
-                        <button
-                          onClick={() => {
-                            abortControllerRef.current?.abort();
-                            setLoading(false);
-                            setIsTyping(false);
-                          }}
-                          className="text-xs text-red-500 hover:text-red-700 transition-colors"
-                          title="Durdur"
-                        >
-                          ⏹ Durdur
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="whitespace-pre-wrap">{msg.content}</p>
-              )}
-              <p
-                className={`text-xs mt-2 ${
-                  msg.role === "user" ? "text-blue-100" : "text-gray-500"
-                }`}
-              >
-                {formatTime(msg.timestamp)}
-              </p>
-            </div>
-            {msg.role === "user" && (
-              <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0 text-sm">
-                👤
-              </div>
-            )}
-          </div>
-        ))}
-
-        {isTyping && !messages.some((m) => m.isStreaming) && (
-          <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-              🤖
-            </div>
-            <div className="bg-gray-100 p-4 rounded-2xl rounded-bl-md">
-              <div className="flex gap-1">
-                <span
-                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-                  style={{ animationDelay: "0ms" }}
-                />
-                <span
-                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-                  style={{ animationDelay: "150ms" }}
-                />
-                <span
-                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-                  style={{ animationDelay: "300ms" }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </ScrollArea>
-
-       {/* Suggested Questions */}
-       {messages.length <= 1 && (
-         <div className="px-4 pb-2">
-           <p className="text-xs text-gray-500 mb-2">Önerilen sorular:</p>
-           <div className="flex flex-wrap gap-2">
-              {SUGGESTED_QUESTIONS.map((question, idx) => (
-               <button
-                 key={idx}
-                 onClick={() => handleSend(question)}
-                 className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs transition-colors text-left"
-                 disabled={loading}
-               >
-                 {question}
-               </button>
-             ))}
-           </div>
-         </div>
-       )}
-
-       {/* Suggested Follow-ups */}
-       {suggestedFollowUps.length > 0 && messages.length > 1 && (
-         <div className="px-4 pb-2">
-           <p className="text-xs text-gray-500 mb-2">Takip soruları:</p>
-           <div className="flex flex-wrap gap-2">
-             {suggestedFollowUps.map((question, idx) => (
-               <button
-                 key={idx}
-                 onClick={() => handleSend(question)}
-                 className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs transition-colors"
-                 disabled={loading}
-               >
-                 {question}
-               </button>
-             ))}
-           </div>
-         </div>
-       )}
 
       {/* Input */}
       <div className="p-4 border-t bg-gray-50">
@@ -697,7 +419,7 @@ export default function AIChatBot({ isOpen, onClose }: AIChatBotProps) {
           </Button>
         </div>
         <p className="text-xs text-gray-400 mt-2 text-center">
-          ReleaseFlow AI Asistanı • Streaming destekli • Markdown + Code Highlight
+          ReleaseFlow AI Asistanı • Streaming destekli • Markdown
         </p>
       </div>
     </div>
